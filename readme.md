@@ -274,3 +274,105 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** Adaptive expert routing for diverse degradations; frequency-aware conditioning can improve texture fidelity without full global attention.【F:MoCE-IR/moce_ir.py†L720-L845】
 * **Cons:** MoE complexity increases training instability and inference overhead; routing adds extra configuration and memory needs.【F:MoCE-IR/moce_ir.py†L720-L845】
 * **Schematic:** Input → patch embed → encoder levels ↓ → latent → frequency embedding → decoder with MoE blocks ↑ → refinement → output + residual.【F:MoCE-IR/moce_ir.py†L720-L845】
+
+## Architectures 21–30: meta-information index
+
+### 21) NEXUSLite
+* **Key features:** Memory-optimized transformer with efficient window attention (ALiBi bias), lightweight channel attention, and reduced-expansion FFN; stages alternate spatial and channel blocks for lower attention memory.【F:Nexus/nexus_lite_arch.py†L1-L24】【F:Nexus/nexus_lite_arch.py†L92-L178】【F:Nexus/nexus_lite_arch.py†L360-L446】【F:Nexus/nexus_lite_arch.py†L465-L551】
+* **Operating principle:** Shallow conv → patch embedding → stacked stages of alternating spatial/channel blocks → norm + unembed → residual conv → pixel-shuffle upsampler.【F:Nexus/nexus_lite_arch.py†L620-L785】
+* **Speed/compute:** Designed for reduced memory/compute via smaller window size and 2× FFN expansion; alternating attention cuts parallel attention cost relative to dual-path designs.【F:Nexus/nexus_lite_arch.py†L1-L24】【F:Nexus/nexus_lite_arch.py†L360-L446】【F:Nexus/nexus_lite_arch.py†L465-L551】
+* **Size/memory:** Explicitly targets ~80% memory reduction; compact variants (tiny/small/medium/large) scale depth/width without changing the lightweight block structure.【F:Nexus/nexus_lite_arch.py†L1-L24】【F:Nexus/nexus_lite_arch.py†L780-L896】
+* **Textures:** Window attention plus channel attention preserve local textures while keeping compute bounded; ALiBi supports stable attention with lower overhead.【F:Nexus/nexus_lite_arch.py†L92-L178】【F:Nexus/nexus_lite_arch.py†L360-L446】
+* **Advantages:** Strong memory efficiency and scalable capacity while retaining transformer-style local modeling.【F:Nexus/nexus_lite_arch.py†L1-L24】【F:Nexus/nexus_lite_arch.py†L465-L551】
+* **Cons:** Windowed attention limits long-range global context unless deeper stages are used; still heavier than pure CNN SR for very low-resource targets.【F:Nexus/nexus_lite_arch.py†L92-L178】【F:Nexus/nexus_lite_arch.py†L620-L785】
+* **Schematic:** Input → conv_first → patch embed → alternating spatial/channel stages → conv_after_body + residual → PixelShuffle upsampler → output.【F:Nexus/nexus_lite_arch.py†L620-L785】
+
+### 22) OAPT_gt
+* **Key features:** Swin-style residual transformer blocks (RSTB) with window attention and optional frequency-enhanced SFB residual connection using FFT-based branches.【F:OAPT/oapt_gt_arch.py†L19-L80】【F:OAPT/oapt_gt_arch.py†L171-L260】【F:OAPT/oapt_gt_arch.py†L910-L1016】
+* **Operating principle:** Shallow conv → patch embed → RSTB stacks with window attention → residual conv/SFB → upsampling head (pixelshuffle/nearest+conv) → output.【F:OAPT/oapt_gt_arch.py†L910-L1038】
+* **Speed/compute:** Transformer window attention scales with window size; optional SFB adds FFT-based compute but remains local to feature maps.【F:OAPT/oapt_gt_arch.py†L19-L80】【F:OAPT/oapt_gt_arch.py†L171-L260】【F:OAPT/oapt_gt_arch.py†L910-L1016】
+* **Size/memory:** Moderate-to-high depending on depth and heads; optional SFB increases parameters and activation memory versus 1conv residual connections.【F:OAPT/oapt_gt_arch.py†L34-L80】【F:OAPT/oapt_gt_arch.py†L969-L1016】
+* **Textures:** FFT branch in SFB injects frequency-domain refinement, improving high-frequency texture reconstruction relative to pure window attention.【F:OAPT/oapt_gt_arch.py†L19-L80】【F:OAPT/oapt_gt_arch.py†L998-L1016】
+* **Advantages:** Strong local modeling with Swin-style attention and optional frequency-aware refinement for sharper SR outputs.【F:OAPT/oapt_gt_arch.py†L19-L80】【F:OAPT/oapt_gt_arch.py†L910-L1016】
+* **Cons:** Attention windows can miss global dependencies; FFT residuals add complexity and extra latency when enabled.【F:OAPT/oapt_gt_arch.py†L19-L80】【F:OAPT/oapt_gt_arch.py†L969-L1016】
+* **Schematic:** Input → conv_first → patch embed → RSTB window attention stack → (1conv/3conv/SFB) residual → upsampler → output.【F:OAPT/oapt_gt_arch.py†L910-L1038】
+
+### 23) OSRT
+* **Key features:** Swin-style RSTB stages with window attention, optional ViT conditioning, and deformable convolution conditioning via DCNv2-based offsets for restoration-aware modulation.【F:OSRT/osrt_arch.py†L71-L178】【F:OSRT/osrt_arch.py†L802-L980】【F:OSRT/osrt_arch.py†L980-L1080】
+* **Operating principle:** Shallow conv → patch embed → RSTB blocks (with optional vit/dcn conditioning) → residual conv → reconstruction head (pixelshuffle/nearest+conv).【F:OSRT/osrt_arch.py†L802-L1080】
+* **Speed/compute:** Window attention keeps compute local; enabling DCN conditioning adds offset convs and deformable ops, increasing latency vs vanilla Swin SR.【F:OSRT/osrt_arch.py†L71-L178】【F:OSRT/osrt_arch.py†L980-L1080】
+* **Size/memory:** Base model is comparable to Swin SR; conditional branches (vit/dcn) add parameters and activation memory for condition features and offsets.【F:OSRT/osrt_arch.py†L802-L980】【F:OSRT/osrt_arch.py†L980-L1080】
+* **Textures:** Window attention preserves local textures, while deformable conditioning can better align structure in challenging degradations (e.g., warps/blur).【F:OSRT/osrt_arch.py†L71-L178】【F:OSRT/osrt_arch.py†L980-L1080】
+* **Advantages:** Flexible conditioning for restoration-aware adaptation without abandoning Swin-like efficiency.【F:OSRT/osrt_arch.py†L802-L1080】
+* **Cons:** Conditional branches increase complexity and tuning burden; deformable ops add extra memory/compute overhead.【F:OSRT/osrt_arch.py†L980-L1080】
+* **Schematic:** Input → conv_first → patch embed → conditioned RSTB stack → conv_after_body → upsampler → output.【F:OSRT/osrt_arch.py†L802-L1080】
+
+### 24) PFT
+* **Key features:** Progressive Focused Transformer using top-k sparse window attention, custom CUDA SMM kernels for sparse QK/V ops, and ConvFFN with depthwise spatial mixing.【F:PFT-SR/pft_arch.py†L1-L120】【F:PFT-SR/pft_arch.py†L180-L270】【F:PFT-SR/pft_arch.py†L360-L520】【F:PFT-SR/pft_arch.py†L860-L980】
+* **Operating principle:** Shallow conv → patch embed → PFTB stages (PFTransformerLayer with sparse window attention + ConvFFN) → residual conv → upsampling head → output.【F:PFT-SR/pft_arch.py†L360-L740】【F:PFT-SR/pft_arch.py†L860-L1060】
+* **Speed/compute:** Sparse top-k attention reduces compute vs dense windows but relies on custom CUDA kernels; cost scales with chosen top-k schedule.【F:PFT-SR/pft_arch.py†L1-L120】【F:PFT-SR/pft_arch.py†L860-L920】
+* **Size/memory:** Moderate-to-high; attention parameters plus extra sparse indices/values add overhead relative to CNN SR, but sparsity can reduce activation load.【F:PFT-SR/pft_arch.py†L360-L520】【F:PFT-SR/pft_arch.py†L860-L980】
+* **Textures:** Window attention with progressive focusing keeps detail-rich tokens while ConvFFN preserves local texture via depthwise mixing.【F:PFT-SR/pft_arch.py†L360-L520】
+* **Advantages:** Adaptive sparsity provides a quality/compute trade-off and focuses capacity on high-detail regions.【F:PFT-SR/pft_arch.py†L360-L520】【F:PFT-SR/pft_arch.py†L860-L980】
+* **Cons:** Requires custom CUDA extensions (smm_cuda); tuning top-k schedules is nontrivial and impacts stability/performance.【F:PFT-SR/pft_arch.py†L1-L120】【F:PFT-SR/pft_arch.py†L860-L920】
+* **Schematic:** Input → conv_first → patch embed → PFTB stages (sparse window attention + ConvFFN) → conv_after_body → upsampler → output.【F:PFT-SR/pft_arch.py†L360-L740】【F:PFT-SR/pft_arch.py†L860-L1060】
+
+### 25) PoolNet / PromptIR (PoolNet)
+* **Key features:** PoolNet uses multi-scale encoder/decoder with residual blocks, SCM/FAM fusion modules, and multi-output supervision; PromptIR variant is a Restormer-style encoder–decoder with MDTA attention, GDFN feed-forward, and optional frequency branches (Avg/Max pooling mixers).【F:PoolNet/PoolNet.py†L6-L126】【F:PoolNet/PoolNet.py†L128-L210】【F:PoolNet/PoolNet_arch.py†L66-L170】【F:PoolNet/PoolNet_arch.py†L320-L520】
+* **Operating principle:** PoolNet builds a 3-level pyramid with SCM-conditioned inputs and FAM feature fusion, then decodes with skip connections and multi-scale outputs; PromptIR builds overlap patch embed → transformer encoder/decoder → refinement → residual output.【F:PoolNet/PoolNet.py†L63-L210】【F:PoolNet/PoolNet_arch.py†L343-L520】
+* **Speed/compute:** PoolNet is conv-heavy and efficient but uses multi-scale paths; PromptIR is heavier due to multi-head attention and deeper transformer stacks.【F:PoolNet/PoolNet.py†L63-L210】【F:PoolNet/PoolNet_arch.py†L66-L170】【F:PoolNet/PoolNet_arch.py†L343-L520】
+* **Size/memory:** PoolNet scales with residual block count (small/base/large); PromptIR scales with transformer depth/heads and decoder refinement blocks.【F:PoolNet/PoolNet.py†L63-L126】【F:PoolNet/PoolNet_arch.py†L343-L520】
+* **Textures:** PoolNet’s multi-scale fusion stabilizes textures across scales; PromptIR’s attention + frequency branches emphasize high-frequency detail and structural consistency.【F:PoolNet/PoolNet.py†L128-L210】【F:PoolNet/PoolNet_arch.py†L320-L520】
+* **Advantages:** PoolNet offers lightweight multi-scale restoration; PromptIR offers stronger detail modeling via transformer attention and frequency-aware branches.【F:PoolNet/PoolNet.py†L63-L210】【F:PoolNet/PoolNet_arch.py†L343-L520】
+* **Cons:** PoolNet lacks global attention; PromptIR is heavier and more memory-intensive than CNN baselines.【F:PoolNet/PoolNet.py†L63-L210】【F:PoolNet/PoolNet_arch.py†L343-L520】
+* **Schematic:** PoolNet: Input → multi-scale SCM + encoder → FAM fusion → decoder + multi-scale outputs. PromptIR: Input → overlap patch embed → transformer encoder/decoder → refinement → output + residual.【F:PoolNet/PoolNet.py†L63-L210】【F:PoolNet/PoolNet_arch.py†L343-L520】
+
+### 26) RBaIR
+* **Key features:** Restormer-style transformer blocks (MDTA + GDFN), channel cross-attention, deformable attention, and dynamic RBF-based frequency modulation modules (DyRBF) injected in the decoder path.【F:RBaIR/RBaIR.py†L14-L176】【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Operating principle:** Overlap patch embed → transformer encoder → latent → decoder with deformable/cross-attention and DyRBF refinement → final refinement blocks → residual output.【F:RBaIR/RBaIR.py†L379-L520】
+* **Speed/compute:** Heavier than conv-only restorers due to attention, deformable sampling, and dynamic RBF modulation; compute scales with block counts and DyRBF settings.【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Size/memory:** High, with multiple attention modules plus DyRBF parameters; decoder adds extra branches for adaptive refinement.【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Textures:** Deformable and cross-attention improve alignment, while DyRBF modules adapt frequency-aware refinement for detail restoration.【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Advantages:** Strong adaptive restoration with multiple attention mechanisms and dynamic frequency modulation for challenging degradations.【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Cons:** Complexity and compute cost are high; sensitive to hyperparameter choices in DyRBF/deformable settings.【F:RBaIR/RBaIR.py†L188-L300】【F:RBaIR/RBaIR.py†L379-L506】
+* **Schematic:** Input → overlap patch embed → transformer encoder ↓ → latent → decoder + DyRBF refinement → refinement blocks → output + residual.【F:RBaIR/RBaIR.py†L379-L520】
+
+### 27) RestorMixer
+* **Key features:** Encoder–decoder with CNN stem + residual depth blocks, VSSBlock + SimpleSwinBlock mixers at deeper stages, and SCM/FAM feature fusion; optional deep supervision outputs.【F:RestorMixer/model.py†L6-L120】【F:RestorMixer/model.py†L122-L220】
+* **Operating principle:** CNN stem → encoder with residual blocks + mix stages → decoder with mixed stages and skip connections → final conv output (optionally multi-scale outputs).【F:RestorMixer/model.py†L18-L220】
+* **Speed/compute:** Hybrid CNN + attention-like mixers; heavier than pure CNNs but lighter than full transformer stacks due to staged mixing and limited window sizes.【F:RestorMixer/model.py†L18-L220】
+* **Size/memory:** Moderate; memory scales with base channel and number of mixer blocks, plus optional deep supervision heads.【F:RestorMixer/model.py†L10-L220】
+* **Textures:** Mixer stages (VSSBlock + SimpleSwinBlock) and multi-scale fusion help preserve texture while CNN stem stabilizes local edges.【F:RestorMixer/model.py†L18-L220】
+* **Advantages:** Balanced hybrid design with multi-scale fusion and mixed token/conv processing for restoration quality.【F:RestorMixer/model.py†L18-L220】
+* **Cons:** More complex than standard U-Nets; additional mixer blocks add overhead vs purely convolutional baselines.【F:RestorMixer/model.py†L18-L220】
+* **Schematic:** Input → CNN stem → encoder + mix stages → decoder + skip fusion → output (+ deep supervision outputs).【F:RestorMixer/model.py†L18-L220】
+
+### 28) Restore_RWKV
+* **Key features:** RWKV-inspired spatial mixing with custom CUDA WKV kernel, OmniShift multi-kernel depthwise reparameterization, and RWKV-style channel mix blocks; U-Net-like encoder/decoder with skip connections.【F:Restore-RWKV/Restore_RWKV.py†L1-L120】【F:Restore-RWKV/Restore_RWKV.py†L121-L220】【F:Restore-RWKV/Restore_RWKV.py†L275-L370】
+* **Operating principle:** Patch conv → stacked RWKV Blocks (spatial mix + channel mix) across encoder/decoder levels → refinement → residual output.【F:Restore-RWKV/Restore_RWKV.py†L230-L370】
+* **Speed/compute:** Efficient sequential mixing vs full attention, but depends on custom CUDA WKV kernel and OmniShift depthwise conv reparameterization; compute scales with recurrence and block depth.【F:Restore-RWKV/Restore_RWKV.py†L1-L220】
+* **Size/memory:** Moderate; RWKV blocks use linear projections and depthwise convolutions, but U-Net depth and refinement blocks add activation memory.【F:Restore-RWKV/Restore_RWKV.py†L121-L220】【F:Restore-RWKV/Restore_RWKV.py†L275-L370】
+* **Textures:** OmniShift combines multi-kernel depthwise convs for richer local texture modeling; RWKV mixing adds broader context without dense attention maps.【F:Restore-RWKV/Restore_RWKV.py†L46-L120】【F:Restore-RWKV/Restore_RWKV.py†L121-L220】
+* **Advantages:** Sequence-style mixing with efficient kernels; good balance of local texture and context with modest parameter counts.【F:Restore-RWKV/Restore_RWKV.py†L1-L220】
+* **Cons:** Requires custom CUDA extension (bi_wkv); kernel availability and compilation can be a deployment hurdle.【F:Restore-RWKV/Restore_RWKV.py†L1-L20】
+* **Schematic:** Input → patch conv → RWKV encoder ↓ → latent → RWKV decoder ↑ → refinement → output + residual.【F:Restore-RWKV/Restore_RWKV.py†L275-L370】
+
+### 29) SFHformer family
+* **Key features:** Mixer blocks combining local dilated depthwise convs and global Fourier units, channel attention fusion, and multi-stage backbone with down/up sampling and skip connections.【F:SFHformer/SFHformer.py†L62-L220】【F:SFHformer/SFHformer.py†L240-L340】
+* **Operating principle:** Patch embedding → Stage blocks (Mixer + FFN) across encoder/decoder stages → upsample with skip fusion → final patch unembed + residual output.【F:SFHformer/SFHformer.py†L240-L340】
+* **Speed/compute:** Largely convolutional with FFT-based global mixing; typically faster than full transformers but heavier than pure CNNs due to Fourier units.【F:SFHformer/SFHformer.py†L120-L220】【F:SFHformer/SFHformer.py†L240-L340】
+* **Size/memory:** Moderate; memory scales with stage depth/width and FFT activations in FourierUnit blocks.【F:SFHformer/SFHformer.py†L120-L220】【F:SFHformer/SFHformer.py†L300-L340】
+* **Textures:** Combines local dilated convs with frequency-domain global mixing for strong texture/detail reconstruction across scales.【F:SFHformer/SFHformer.py†L90-L220】
+* **Advantages:** Efficient hybrid of spatial and frequency modeling; strong texture restoration without heavy attention maps.【F:SFHformer/SFHformer.py†L90-L220】
+* **Cons:** FFT-based modules add overhead; global context is frequency-biased rather than explicit token attention.【F:SFHformer/SFHformer.py†L120-L220】
+* **Schematic:** Input → patch embed → Stage blocks (local mixer + Fourier mixer + FFN) → down/upsample with skips → patch unembed → output + residual.【F:SFHformer/SFHformer.py†L240-L340】
+
+### 30) AdaIR
+* **Key features:** Restormer-style transformer encoder–decoder with frequency mining via FreModule (FFT-based high/low separation), channel cross-attention, and adaptive frequency refinement in decoder stages.【F:SIPL/adair_arch.py†L70-L220】【F:SIPL/adair_arch.py†L315-L396】【F:SIPL/adair_arch.py†L410-L520】
+* **Operating principle:** Overlap patch embed → transformer encoder → latent → FreModule-conditioned decoder refinement → final refinement blocks → residual output.【F:SIPL/adair_arch.py†L410-L520】
+* **Speed/compute:** Heavier than CNNs due to multi-head attention and FFT-based FreModule; compute scales with stage depth and decoder frequency modules.【F:SIPL/adair_arch.py†L70-L220】【F:SIPL/adair_arch.py†L315-L396】【F:SIPL/adair_arch.py†L410-L520】
+* **Size/memory:** Moderate-to-high; attention blocks plus frequency mining add parameters and intermediate activations (FFT, masks, cross-attn).【F:SIPL/adair_arch.py†L70-L220】【F:SIPL/adair_arch.py†L315-L396】
+* **Textures:** Explicit high/low-frequency decomposition and cross-attention fusion enhance texture/detail recovery across degradations.【F:SIPL/adair_arch.py†L315-L396】
+* **Advantages:** Frequency-aware refinement with transformer backbone provides strong restoration quality for diverse degradations.【F:SIPL/adair_arch.py†L315-L520】
+* **Cons:** More complex and heavier than NAF-style CNNs; FFT/cross-attn modules increase runtime and tuning burden.【F:SIPL/adair_arch.py†L70-L220】【F:SIPL/adair_arch.py†L315-L396】
+* **Schematic:** Input → overlap patch embed → transformer encoder ↓ → latent → FreModule-guided decoder ↑ → refinement → output + residual.【F:SIPL/adair_arch.py†L410-L520】
