@@ -1,0 +1,491 @@
+{
+  "version": 1,
+  "project": "arch_research",
+  "architectures": [
+    {
+      "name": "AdaRevID",
+      "tasks": ["restoration", "deblurring"],
+      "files": ["AdaRevD/AdaRevID_arch.py"],
+      "classes": ["AdaRevID"],
+      "notes": "NAFBlock-based encoder/decoder with Fusion_Decoder variants (AdaRevIDSlide*)."
+    },
+    {
+      "name": "UFPNet family",
+      "tasks": ["restoration"],
+      "files": [
+        "AdaRevD/UFPNet/UFPNet_code_uncertainty_arch.py",
+        "AdaRevD/UFPNet/Baseline_arch.py"
+      ],
+      "classes": ["UFPNet", "UFPNet_code_uncertainty", "Baseline"],
+      "notes": "UFPNet variants with kernel_attention and NAFBlock backbones."
+    },
+    {
+      "name": "CAMixer family",
+      "tasks": ["super-resolution"],
+      "files": [
+        "CAMixer/CAMixerSR_arch.py",
+        "CAMixer/CAMixerOSR_arch.py",
+        "CAMixer/ClassSR_CAMixerSR_arch.py"
+      ],
+      "classes": ["CAMixerSR", "CAMixerOSR", "ClassSR_3class_CAMixerSR_net"],
+      "notes": "Conv-attention mixer SR with SR/OSR/ClassSR variants."
+    },
+    {
+      "name": "CFAT",
+      "tasks": ["super-resolution"],
+      "files": ["CFAT/cfat.py"],
+      "classes": ["CFAT"],
+      "notes": "Window-attention transformer (WindowAttention_D/S, RHAG)."
+    },
+    {
+      "name": "ConvMambaSR",
+      "tasks": ["super-resolution"],
+      "files": ["ConvMambaSR/ConvMambaSR_arch.py"],
+      "classes": ["ConvMambaSR"],
+      "notes": "Mamba-style SS2D/VSSBlock SR network."
+    },
+    {
+      "name": "PromptIR / Restormer (DFPIR)",
+      "tasks": ["restoration"],
+      "files": ["DFPIR/dfpir_arch.py"],
+      "classes": ["PromptIR", "Restormer"],
+      "notes": "Prompt-conditioned Restormer-style transformer blocks."
+    },
+    {
+      "name": "MSDeformableNAIR",
+      "tasks": ["restoration"],
+      "files": ["DSwinIR/MSDeformableNAIR.py"],
+      "classes": ["MSDeformableNAIR"],
+      "notes": "Deformable neighborhood attention Restormer variant."
+    },
+    {
+      "name": "DeblurDiNAT",
+      "tasks": ["deblurring"],
+      "files": ["DeblurDiNAT/DeblurDiNAT.py", "DeblurDiNAT/Baseline.py"],
+      "classes": ["NADeblurMini", "Baseline"],
+      "notes": "NAT-based deblurring with baseline reference."
+    },
+    {
+      "name": "DiMoSR",
+      "tasks": ["super-resolution"],
+      "files": ["DiMoSR/dimosr_arch.py"],
+      "classes": ["DiMoSR"],
+      "notes": "SR model with ResBottleneck blocks."
+    },
+    {
+      "name": "ESC family",
+      "tasks": ["super-resolution"],
+      "files": ["ESC/esc_arch.py", "ESC/esc_fp_arch.py", "ESC/esc_real_arch.py"],
+      "classes": ["ESC", "ESCFP", "ESCReal", "ESCRealM"],
+      "notes": "Convolutional + window attention SR; FP/Real variants."
+    },
+    {
+      "name": "RRDB_Net (ESRGANplus)",
+      "tasks": ["super-resolution"],
+      "files": ["ESRGANplus/ESRGANplus_arch.py"],
+      "classes": ["RRDB_Net"],
+      "notes": "ESRGAN-style RRDB backbone."
+    },
+    {
+      "name": "EvTexture",
+      "tasks": ["restoration"],
+      "files": [
+        "EvTexture/evtexture_arch.py",
+        "EvTexture/unet_arch.py",
+        "EvTexture/spynet_arch.py"
+      ],
+      "classes": ["EvTexture", "UNet", "SpyNet"],
+      "notes": "Event-based texture restoration with UNet/SpyNet alignment."
+    },
+    {
+      "name": "FAT",
+      "tasks": ["super-resolution"],
+      "files": ["FAT/FAT.py"],
+      "classes": ["FAT"],
+      "notes": "Fourier-aware Swin-style transformer."
+    },
+    {
+      "name": "FDAT",
+      "tasks": ["super-resolution"],
+      "files": ["FDAT/fdat.py"],
+      "classes": ["FDAT"],
+      "notes": "Fast deformable attention transformer."
+    },
+    {
+      "name": "HAIR",
+      "tasks": ["restoration"],
+      "files": ["HAIR/HAIR_arch.py"],
+      "classes": ["HAIR"],
+      "notes": "Hybrid attention image restoration."
+    },
+    {
+      "name": "LSTMConvSR",
+      "tasks": ["super-resolution"],
+      "files": ["LSTMConvSR/LSTMConvSR_arch.py"],
+      "classes": ["LSTMConvSR"],
+      "notes": "Vision LSTM blocks combined with convolution."
+    },
+    {
+      "name": "LoFormer family",
+      "tasks": ["restoration", "deblurring"],
+      "files": [
+        "LoFormer/LoFormer_arch.py",
+        "LoFormer/FNAFNet_arch.py",
+        "LoFormer/DeepDeblur_arch.py"
+      ],
+      "classes": ["LoFormer", "FNAFNet", "DeepDeblur"],
+      "notes": "LoFormer transformer with NAFNet/deblurring variants."
+    },
+    {
+      "name": "MEASNet (IRmodel)",
+      "tasks": ["restoration"],
+      "files": ["MEASNet/MEASNet.py"],
+      "classes": ["IRmodel"],
+      "notes": "Task-prompted transformer restoration model."
+    },
+    {
+      "name": "MP-HSIR",
+      "tasks": ["hyperspectral restoration"],
+      "files": ["MP-HSIR/MP_HSIR.py"],
+      "classes": ["MP_HSIR_Net"],
+      "notes": "Hyperspectral restoration with cross-attention blocks."
+    },
+    {
+      "name": "MoCEIR",
+      "tasks": ["restoration"],
+      "files": ["MoCE-IR/moce_ir.py"],
+      "classes": ["MoCEIR"],
+      "notes": "Mixture-of-convolution-experts (MoE) with frequency embedding."
+    },
+    {
+      "name": "NEXUSLite",
+      "tasks": ["super-resolution"],
+      "files": ["Nexus/nexus_lite_arch.py"],
+      "classes": ["NEXUSLite"],
+      "notes": "Efficient window attention transformer."
+    },
+    {
+      "name": "OAPT_gt",
+      "tasks": ["super-resolution"],
+      "files": ["OAPT/oapt_gt_arch.py"],
+      "classes": ["OAPT_gt"],
+      "notes": "Swin-style transformer SR."
+    },
+    {
+      "name": "OSRT",
+      "tasks": ["super-resolution"],
+      "files": ["OSRT/osrt_arch.py"],
+      "classes": ["OSRT"],
+      "notes": "Transformer SR with window attention."
+    },
+    {
+      "name": "PFT",
+      "tasks": ["super-resolution"],
+      "files": ["PFT-SR/pft_arch.py"],
+      "classes": ["PFT"],
+      "notes": "Patch-former transformer for SR."
+    },
+    {
+      "name": "PoolNet / PromptIR (PoolNet)",
+      "tasks": ["restoration"],
+      "files": ["PoolNet/PoolNet.py", "PoolNet/PoolNet_arch.py"],
+      "classes": ["PoolNet", "PromptIR"],
+      "notes": "Pooling-based encoder/decoder with transformer prompt variant."
+    },
+    {
+      "name": "RBaIR",
+      "tasks": ["restoration"],
+      "files": ["RBaIR/RBaIR.py"],
+      "classes": ["RBaIR"],
+      "notes": "Deformable attention with channel cross-attention."
+    },
+    {
+      "name": "RestorMixer",
+      "tasks": ["restoration"],
+      "files": ["RestorMixer/model.py"],
+      "classes": ["RestorMixer"],
+      "notes": "Encoder/decoder restoration with mixer blocks."
+    },
+    {
+      "name": "Restore_RWKV",
+      "tasks": ["restoration"],
+      "files": ["Restore-RWKV/Restore_RWKV.py"],
+      "classes": ["Restore_RWKV"],
+      "notes": "RWKV-style spatial/channel mixing."
+    },
+    {
+      "name": "SFHformer family",
+      "tasks": ["restoration", "deblurring"],
+      "files": ["SFHformer/SFHformer.py", "SFHformer/sfhformer_motion_blur.py"],
+      "classes": ["Backbone", "Backbone_new"],
+      "notes": "Fourier-enhanced transformer; motion-blur variant."
+    },
+    {
+      "name": "AdaIR",
+      "tasks": ["restoration"],
+      "files": ["SIPL/adair_arch.py"],
+      "classes": ["AdaIR", "AdaIR_ProxyFusion"],
+      "notes": "Frequency refinement + cross-attention restoration."
+    },
+    {
+      "name": "SeemoRe",
+      "tasks": ["restoration"],
+      "files": ["SeeMore/seemore_arch.py"],
+      "classes": ["SeemoRe"],
+      "notes": "Mixture-of-experts (MoE) restoration."
+    },
+    {
+      "name": "UVM-Net",
+      "tasks": ["restoration"],
+      "files": ["UVM-Net/model.py", "UVM-Net/uvmb.py"],
+      "classes": ["UNet", "UVMB"],
+      "notes": "UNet backbone with UVMB blocks."
+    },
+    {
+      "name": "VLUNet",
+      "tasks": ["restoration"],
+      "files": ["VLU-Net/vlu-net_arch.py"],
+      "classes": ["VLUNet"],
+      "notes": "Cross-attention restoration with multimodal blocks."
+    },
+    {
+      "name": "DetailRefinerNet",
+      "tasks": ["restoration"],
+      "files": ["arches/detailrefinernet_arch.py"],
+      "classes": ["DetailRefinerNet"],
+      "notes": "Detail refinement network with refinement blocks."
+    },
+    {
+      "name": "EMT",
+      "tasks": ["restoration"],
+      "files": ["arches/emt_arch.py"],
+      "classes": ["EMT"],
+      "notes": "Encoder/decoder transformer groups."
+    },
+    {
+      "name": "ParagonSR",
+      "tasks": ["super-resolution"],
+      "files": ["arches/paragonsr_arch.py"],
+      "classes": ["ParagonSR"],
+      "notes": "Gated FFN SR with Paragon blocks."
+    },
+    {
+      "name": "ParagonSR2",
+      "tasks": ["super-resolution"],
+      "files": ["arches/paragonsr2_arch.py"],
+      "classes": ["ParagonSR2"],
+      "notes": "Adaptive token SR transformer."
+    },
+    {
+      "name": "ElysiumSR",
+      "tasks": ["super-resolution"],
+      "files": ["arches/elysiumsr_arch.py"],
+      "classes": ["ElysiumSR_S", "ElysiumSR_M", "ElysiumSR_L", "ElysiumSR_XL"],
+      "notes": "Residual-block SR family with size variants."
+    },
+    {
+      "name": "DIS",
+      "tasks": ["super-resolution"],
+      "files": ["arches/dis_arch.py"],
+      "classes": ["DIS"],
+      "notes": "Depthwise separable SR with PixelShuffle upsampler."
+    },
+    {
+      "name": "catanet",
+      "tasks": ["super-resolution"],
+      "files": ["arches/catanet_arch.py"],
+      "classes": ["catanet"],
+      "notes": "Attention blocks (TAB/LRSA) for SR."
+    },
+    {
+      "name": "HyperionSR",
+      "tasks": ["super-resolution"],
+      "files": ["arches/hyperionsr_arch.py"],
+      "classes": ["HyperionSR_S", "HyperionSR_M", "HyperionSR_L", "HyperionSR_XL"],
+      "notes": "Gated FFN SR with scale variants."
+    },
+    {
+      "name": "LKFMixer",
+      "tasks": ["super-resolution"],
+      "files": ["arches/lkfmixer_arch.py"],
+      "classes": ["LKFMixer"],
+      "notes": "Large-kernel mixer with PixelShuffleDirect."
+    },
+    {
+      "name": "TSPANv2",
+      "tasks": ["temporal super-resolution", "restoration"],
+      "files": ["arches/temporal_span_v2_arch.py"],
+      "classes": ["TSPANv2"],
+      "notes": "Temporal SPAN blocks for sequential SR."
+    },
+    {
+      "name": "ATD",
+      "tasks": ["super-resolution"],
+      "files": ["atd/arch.py"],
+      "classes": ["ATD"],
+      "notes": "ATDTransformerLayer-based SR."
+    },
+    {
+      "name": "DRCT",
+      "tasks": ["super-resolution"],
+      "files": ["drct/DRCT_arch.py"],
+      "classes": ["DRCT"],
+      "notes": "Swin Transformer SR with RDG blocks."
+    },
+    {
+      "name": "FlexNet",
+      "tasks": ["restoration"],
+      "files": ["flexnet/flexnet_arch.py"],
+      "classes": ["FlexNet"],
+      "notes": "MetaPipeline + TransformerBlock restoration."
+    },
+    {
+      "name": "GateRV3",
+      "tasks": ["super-resolution", "restoration"],
+      "files": ["gaterv3/gaterv3_arch.py"],
+      "classes": ["GateRV3"],
+      "notes": "Gated CNN/attention SR."
+    },
+    {
+      "name": "GFISRV2",
+      "tasks": ["super-resolution"],
+      "files": ["gfisrv2/gfisrv2_arch.py"],
+      "classes": ["GFISRV2"],
+      "notes": "Fourier-unit SR with gated CNN blocks."
+    },
+    {
+      "name": "GRL",
+      "tasks": ["super-resolution"],
+      "files": ["grl/grl.py"],
+      "classes": ["GRL"],
+      "notes": "TransformerStage-based SR."
+    },
+    {
+      "name": "MoESR",
+      "tasks": ["super-resolution"],
+      "files": ["moesr/arch.py"],
+      "classes": ["MoESR"],
+      "notes": "Mixture-of-experts SR."
+    },
+    {
+      "name": "MoSRv2",
+      "tasks": ["super-resolution"],
+      "files": ["mosrv2/arch.py"],
+      "classes": ["MoSRv2"],
+      "notes": "Gated CNN SR v2."
+    },
+    {
+      "name": "Aether",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/aether_arch.py"],
+      "classes": ["aether"],
+      "notes": "Large-kernel SR with re-parameterized conv."
+    },
+    {
+      "name": "CFSR",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/cfsr_arch.py"],
+      "classes": ["cfsr"],
+      "notes": "LargeKernelConv SR."
+    },
+    {
+      "name": "EQRSRGAN",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/eqrsrgan_arch.py"],
+      "classes": ["eqrsrgan"],
+      "notes": "GAN SR with RRDB."
+    },
+    {
+      "name": "EA2FPN",
+      "tasks": ["restoration", "super-resolution"],
+      "files": ["neosr/ea2fpn_arch.py"],
+      "classes": ["ea2fpn"],
+      "notes": "FPN-style aggregation for restoration."
+    },
+    {
+      "name": "HMA",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/hma_arch.py"],
+      "classes": ["hma"],
+      "notes": "Hierarchical window attention SR."
+    },
+    {
+      "name": "HIT-SRF",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/hitsrf_arch.py"],
+      "classes": ["hit_srf"],
+      "notes": "Hierarchical transformer SR with RHTB blocks."
+    },
+    {
+      "name": "MFGHMoE",
+      "tasks": ["super-resolution"],
+      "files": ["neosr/mfghmoe_arch.py"],
+      "classes": ["mfghmoe"],
+      "notes": "MoE SR with dual routing."
+    },
+    {
+      "name": "HiFaceGAN",
+      "tasks": ["face restoration"],
+      "files": ["others/hifacegan_arch.py"],
+      "classes": ["HiFaceGAN"],
+      "notes": "SPADE-based face restoration GAN."
+    },
+    {
+      "name": "StyleGAN2 family",
+      "tasks": ["face restoration", "super-resolution"],
+      "files": ["others/stylegan2_arch.py", "others/stylegan2_bilinear_arch.py"],
+      "classes": [
+        "StyleGAN2Generator",
+        "StyleGAN2Discriminator",
+        "StyleGAN2GeneratorBilinear"
+      ],
+      "notes": "StyleGAN2 generator/discriminator with bilinear variant."
+    },
+    {
+      "name": "PLKSR family",
+      "tasks": ["super-resolution"],
+      "files": ["plksr/plksr_arch.py", "plksr/realplksr_arch.py"],
+      "classes": ["plksr", "realplksr"],
+      "notes": "Large-kernel PLK blocks; real-world SR variant."
+    },
+    {
+      "name": "RHA",
+      "tasks": ["super-resolution"],
+      "files": ["rha/arch.py"],
+      "classes": ["RHA"],
+      "notes": "Hybrid attention SR."
+    },
+    {
+      "name": "SpanC",
+      "tasks": ["super-resolution"],
+      "files": ["spanpp/spanpp_arch.py"],
+      "classes": ["SpanC"],
+      "notes": "Swift parameter-free attention SR (SPAB/IGConv)."
+    },
+    {
+      "name": "MicroSR",
+      "tasks": ["super-resolution"],
+      "files": ["team07_MicroSR/MicroSR_Model.py"],
+      "classes": ["MicroSR"],
+      "notes": "Micro SR with Swin-like blocks."
+    },
+    {
+      "name": "DAT family",
+      "tasks": ["super-resolution"],
+      "files": ["team15_BBox/model.py", "team15_BBox/MSHAT_model.py"],
+      "classes": ["DAT", "MSHAT"],
+      "notes": "Deformable attention transformer SR + MSHAT variant."
+    },
+    {
+      "name": "HAT family",
+      "tasks": ["super-resolution"],
+      "files": [
+        "team18_XiaomiMM/model_1.py",
+        "team18_XiaomiMM/model_2.py",
+        "team18_XiaomiMM/model_3.py"
+      ],
+      "classes": ["HATIQCMix", "HAT", "HATM"],
+      "notes": "HAT transformer SR family with multiple variants."
+    }
+  ]
+}
