@@ -580,3 +580,105 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** Efficient CNN-based SR with multiscale gating; deployable with flexible upsampler options.【F:moesr/arch.py†L167-L240】
 * **Cons:** Limited explicit global attention; quality gains depend on block depth and expansion settings.【F:moesr/arch.py†L167-L240】
 * **Schematic:** Input → conv_in → [Blocks (GatedCNNBlocks + MSG)]×N → residual → UniUpsample → output.【F:moesr/arch.py†L167-L240】
+
+## Architectures 51–60: meta-information index
+
+### 51) MoSRv2
+* **Key features:** GatedCNNBlock with RMSNorm/LayerNorm and InceptionDWConv2d depthwise branches; optional PixelUnshuffle input; UniUpsample supports PixelShuffle, nearest+conv, or DySample upsampling.【F:mosrv2/arch.py†L91-L155】【F:mosrv2/arch.py†L174-L209】【F:mosrv2/arch.py†L244-L322】
+* **Operating principle:** (Optional) PixelUnshuffle → conv → N×GatedCNNBlock → tail conv stack → UniUpsample, plus a bilinear shortcut; input is padded to multiples and cropped after upscaling.【F:mosrv2/arch.py†L297-L337】
+* **Speed/compute:** Purely convolutional with depthwise branches and gating; generally faster than attention/SSM SR but cost grows linearly with `n_block` and `dim`.【F:mosrv2/arch.py†L244-L322】
+* **Size/memory:** Moderate; parameters scale with `n_block` and `dim` without attention matrices, so activation memory is predictable for fixed resolution.【F:mosrv2/arch.py†L281-L322】
+* **Textures:** InceptionDWConv2d band kernels and gated mixing emphasize directional/textured detail without global attention.【F:mosrv2/arch.py†L174-L209】【F:mosrv2/arch.py†L244-L278】
+* **Advantages:** Flexible upsamplers (including DySample) and a bilinear shortcut stabilize reconstruction; optional unshuffle boosts low-scale efficiency.【F:mosrv2/arch.py†L91-L155】【F:mosrv2/arch.py†L297-L337】
+* **Cons:** No explicit long-range attention; padding/cropping adds overhead and can affect boundary behavior on odd sizes.【F:mosrv2/arch.py†L328-L337】
+* **Schematic:** Input → (PixelUnshuffle) → conv → [GatedCNNBlock]×N → tail convs → UniUpsample → output + bilinear shortcut.【F:mosrv2/arch.py†L297-L337】
+
+### 52) Aether
+* **Key features:** ReparamLargeKernelConv with deploy-time fusion, DeploymentNorm, GatedConvFFN, and optional channel/spatial attention inside AetherBlock; multi-stage feature fusion with QuantFusion and quantization-aware stubs.【F:neosr/aether_arch.py†L49-L127】【F:neosr/aether_arch.py†L251-L327】【F:neosr/aether_arch.py†L424-L455】
+* **Operating principle:** Normalize input → conv_first → staged AetherBlocks → multi-stage fusion → residual + norm/conv → conv_before_upsample → AdaptiveUpsample → conv_last → denormalize output (with optional quant/dequant).【F:neosr/aether_arch.py†L416-L515】
+* **Speed/compute:** Large-kernel depthwise convs and attention add cost, but reparameterization can fuse branches for deployment; quantization hooks target faster inference on supported backends.【F:neosr/aether_arch.py†L49-L127】【F:neosr/aether_arch.py†L517-L558】
+* **Size/memory:** Scales with `embed_dim` and `depths`; multi-stage fusion keeps full-resolution features in memory during fusion steps.【F:neosr/aether_arch.py†L383-L455】
+* **Textures:** Large-kernel convs plus channel/spatial attention amplify high-frequency textures and edge structure.【F:neosr/aether_arch.py†L251-L283】
+* **Advantages:** Deployment-focused (fuse_model, QAT) and adaptable capacity tiers via depth/width configs.【F:neosr/aether_arch.py†L517-L558】【F:neosr/aether_arch.py†L645-L667】
+* **Cons:** Multi-stage attention/large-kernel blocks are heavier than lightweight CNN SR; fusion adds overhead at high resolution.【F:neosr/aether_arch.py†L251-L327】【F:neosr/aether_arch.py†L424-L455】
+* **Schematic:** Input → conv_first → [AetherBlock stage]×S → feature fusion → norm/conv → AdaptiveUpsample → output.【F:neosr/aether_arch.py†L416-L509】
+
+### 53) CFSR
+* **Key features:** LargeKernelConv and ConvMod attention-style mixing, plus an MLP augmented with Sobel/Laplacian filters; Layer stacks with LayerScale; lightweight UpsampleOneStep option.【F:neosr/cfsr_arch.py†L58-L173】【F:neosr/cfsr_arch.py†L198-L269】
+* **Operating principle:** conv_first → stacked Layers (ConvMod + MLP) → norm + conv_after_body → PixelShuffle upsample (or residual conv path) → output.【F:neosr/cfsr_arch.py†L313-L352】
+* **Speed/compute:** Convolution-only with large-kernel depthwise ops; `merge_mlp` can fold edge filters into the MLP for inference efficiency.【F:neosr/cfsr_arch.py†L174-L196】【F:neosr/cfsr_arch.py†L358-L364】
+* **Size/memory:** Moderate; no attention matrices, memory scales mainly with feature width and depth.【F:neosr/cfsr_arch.py†L285-L323】
+* **Textures:** Sobel/Laplacian filter bank in the MLP emphasizes edges and fine textures in local neighborhoods.【F:neosr/cfsr_arch.py†L94-L171】
+* **Advantages:** Edge-aware conv pipeline with simple PixelShuffle upsampling and optional inference fusion for speed.【F:neosr/cfsr_arch.py†L251-L269】【F:neosr/cfsr_arch.py†L358-L364】
+* **Cons:** Lacks explicit long-range attention; receptive field is bounded by kernel sizes and depth.【F:neosr/cfsr_arch.py†L198-L249】
+* **Schematic:** Input → conv_first → [Layer(ConvMod + MLP)]×N → conv_after_body → UpsampleOneStep → output.【F:neosr/cfsr_arch.py†L313-L352】
+
+### 54) EQRSRGAN
+* **Key features:** RRDB backbone with ResidualDenseBlocks, plus a 3D conv stack that blends features with a second input (`dist`), and pixel-unshuffle support for scale ×1/×2.【F:neosr/eqrsrgan_arch.py†L12-L55】【F:neosr/eqrsrgan_arch.py†L57-L82】【F:neosr/eqrsrgan_arch.py†L105-L140】
+* **Operating principle:** PixelUnshuffle (scale 1/2) → conv_first on both `x` and `dist` → RRDB trunk → residual add → nearest upsample + convs → output.【F:neosr/eqrsrgan_arch.py†L105-L147】
+* **Speed/compute:** Dense RRDB stacks plus 3D conv fusion are heavier than plain CNN SR; compute scales with `num_block` and growth channels.【F:neosr/eqrsrgan_arch.py†L12-L82】
+* **Size/memory:** Dense connections and dual inputs increase activation memory, especially with pixel-unshuffled channels at low scales.【F:neosr/eqrsrgan_arch.py†L105-L132】
+* **Textures:** Dense residual mixing preserves local texture detail; `dist` guidance can enrich high-frequency recovery when provided.【F:neosr/eqrsrgan_arch.py†L12-L55】【F:neosr/eqrsrgan_arch.py†L105-L140】
+* **Advantages:** Strong RRDB GAN-style baseline with additional guidance input; supports low-scale inference via unshuffle.【F:neosr/eqrsrgan_arch.py†L84-L140】
+* **Cons:** High compute/memory for deep RRDB stacks; extra `dist` input complicates data pipelines.【F:neosr/eqrsrgan_arch.py†L105-L147】
+* **Schematic:** Input (+dist) → PixelUnshuffle → conv → RRDB trunk → residual → nearest-upsample convs → output.【F:neosr/eqrsrgan_arch.py†L105-L147】
+
+### 55) EA2FPN
+* **Key features:** ResNet18 encoder, FPN-style top-down blocks with DySample upscaling, and an AttentionAggregationModule for multi-scale fusion; ConvBnMish uses spectral norm and GroupNorm/Mish.【F:neosr/ea2fpn_arch.py†L18-L118】【F:neosr/ea2fpn_arch.py†L146-L163】【F:neosr/ea2fpn_arch.py†L183-L229】
+* **Operating principle:** Extract encoder stages → build pyramid (p5→p2) via FPNBlock + DySample → per-level SegmentationBlocks → attention aggregation → final conv + DySample to RGB output.【F:neosr/ea2fpn_arch.py†L255-L276】
+* **Speed/compute:** Multi-stage ResNet encoder plus FPN/attention fusion is heavier than single-image CNN SR; compute scales with backbone depth and pyramid ops.【F:neosr/ea2fpn_arch.py†L209-L276】
+* **Size/memory:** Multi-scale features and attention buffers increase memory; ResNet18 backbone dominates parameter count.【F:neosr/ea2fpn_arch.py†L209-L276】
+* **Textures:** Attention aggregation across pyramids improves texture coherence across scales and preserves fine structure in the fused output.【F:neosr/ea2fpn_arch.py†L107-L118】【F:neosr/ea2fpn_arch.py†L255-L276】
+* **Advantages:** Strong multi-scale fusion with attention and DySample-based upscaling for SR-like outputs.【F:neosr/ea2fpn_arch.py†L146-L163】【F:neosr/ea2fpn_arch.py†L250-L276】
+* **Cons:** Backbone dependence (ResNet18) and multi-scale pyramid increase latency and memory vs lightweight SR models.【F:neosr/ea2fpn_arch.py†L209-L276】
+* **Schematic:** Input → ResNet18 encoder → FPN blocks (p5→p2) → attention aggregation → final conv → DySample output.【F:neosr/ea2fpn_arch.py†L255-L276】
+
+### 56) HMA
+* **Key features:** Grid Attention Block (GAB) mixes grid attention with window attention (shifted/non-shifted); grid_shuffle/unshuffle for interval attention; RHTB stacks inside Residual Hybrid Attention Groups (RHAG).【F:neosr/hma_arch.py†L647-L783】【F:neosr/hma_arch.py†L987-L1058】【F:neosr/hma_arch.py†L1241-L1266】
+* **Operating principle:** conv_first → patch embed → RHAG/RHTB stacks (grid + window attention) → conv_after_body → pixelshuffle reconstruction head.【F:neosr/hma_arch.py†L1195-L1284】
+* **Speed/compute:** Attention-heavy with both grid and window branches; cost scales with window/interval sizes and depth, typically slower than CNN SR models.【F:neosr/hma_arch.py†L647-L783】【F:neosr/hma_arch.py†L1241-L1266】
+* **Size/memory:** Multiple attention buffers and position biases raise memory; deeper RHAG stacks increase activations linearly with depth.【F:neosr/hma_arch.py†L647-L783】【F:neosr/hma_arch.py†L1241-L1266】
+* **Textures:** Hybrid grid + window attention captures both local textures and broader structural patterns, aiding detailed SR restoration.【F:neosr/hma_arch.py†L647-L783】
+* **Advantages:** Multi-axis attention improves long-range structure while preserving local detail; Swin-like design supports scalable depth/width.【F:neosr/hma_arch.py†L647-L783】【F:neosr/hma_arch.py†L1241-L1266】
+* **Cons:** Higher compute and memory than conv-only SR; window/interval hyperparameters require tuning for efficiency.【F:neosr/hma_arch.py†L647-L783】
+* **Schematic:** Input → conv_first → patch embed → [RHTB (grid + window attention)]×N → conv_after_body → PixelShuffle → output.【F:neosr/hma_arch.py†L1195-L1284】
+
+### 57) HIT-SRF
+* **Key features:** Spatial-Channel Correlation (SCC) attention combines spatial and channel self-correlation; HierarchicalTransformerBlock supports variable window sizes; RHTB stacks with configurable upsamplers.【F:neosr/hitsrf_arch.py†L221-L398】【F:neosr/hitsrf_arch.py†L406-L470】【F:neosr/hitsrf_arch.py†L994-L1049】
+* **Operating principle:** conv_first → patch embed → stacked RHTB (hierarchical windows) → conv_after_body → upsampler (pixelshuffle/pixelshuffledirect/nearest+conv) → output.【F:neosr/hitsrf_arch.py†L946-L1105】
+* **Speed/compute:** SCC attention and hierarchical windows are heavier than CNNs; compute grows with depth and base window sizes but avoids full global attention.【F:neosr/hitsrf_arch.py†L221-L470】
+* **Size/memory:** Attention buffers and hierarchical window processing increase memory; `resi_connection` and upsampler choices trade parameters vs runtime.【F:neosr/hitsrf_arch.py†L994-L1059】
+* **Textures:** SCC explicitly fuses spatial and channel cues, improving texture detail and pattern consistency across scales.【F:neosr/hitsrf_arch.py†L221-L398】
+* **Advantages:** Flexible upsampling strategies and hierarchical window ratios allow speed/quality tuning for SR tasks.【F:neosr/hitsrf_arch.py†L994-L1059】
+* **Cons:** More complex than pure CNN SR; attention-heavy layers increase latency on high-resolution inputs.【F:neosr/hitsrf_arch.py†L221-L470】
+* **Schematic:** Input → conv_first → patch embed → [RHTB (SCC attention)]×N → conv_after_body → upsample → output.【F:neosr/hitsrf_arch.py†L946-L1105】
+
+### 58) MFGHMoE
+* **Key features:** DualRouting gates select experts in a hierarchical MoE (HMoE) module; MoEUpsample uses HMoE + PixelShuffle; transformer backbone with RHAG stacks and overlapping window attention indices.【F:neosr/mfghmoe_arch.py†L821-L1015】【F:neosr/mfghmoe_arch.py†L1099-L1158】
+* **Operating principle:** conv_first → patch embed → RHAG stacks with window attention → MoEUpsample (HMoE + PixelShuffle) for reconstruction; gating selects expert pathways per spatial token.【F:neosr/mfghmoe_arch.py†L1018-L1158】
+* **Speed/compute:** MoE routing adds gating overhead but can limit per-token expert compute; window attention still dominates at high resolution.【F:neosr/mfghmoe_arch.py†L821-L1015】
+* **Size/memory:** Expert banks increase parameter count; token routing and attention buffers add memory overhead beyond standard transformer SR models.【F:neosr/mfghmoe_arch.py†L892-L1015】
+* **Textures:** Expert specialization and overlap-aware attention can improve texture/detail recovery on structured patterns (e.g., remote sensing).【F:neosr/mfghmoe_arch.py†L821-L1015】
+* **Advantages:** Token-selective compute via MoE and flexible window attention; PixelShuffle MoEUpsample keeps reconstruction efficient.【F:neosr/mfghmoe_arch.py†L994-L1015】【F:neosr/mfghmoe_arch.py†L1209-L1210】
+* **Cons:** MoE routing complexity and expert imbalance risks; heavier than single-expert attention models.【F:neosr/mfghmoe_arch.py†L821-L1015】
+* **Schematic:** Input → conv_first → patch embed → [RHAG]×N → MoEUpsample (HMoE + PixelShuffle) → output.【F:neosr/mfghmoe_arch.py†L1018-L1158】
+
+### 59) HiFaceGAN
+* **Key features:** SPADEGenerator backbone with SPADEResnetBlocks, progressive upsampling stages, and ToRGB heads; HiFaceGAN swaps encoder to LIPEncoder for learned feature extraction.【F:others/hifacegan_arch.py†L10-L94】【F:others/hifacegan_arch.py†L145-L165】
+* **Operating principle:** Encode input via LIPEncoder → SPADEResnet blocks → progressive upsampling → ToRGB output with tanh activation.【F:others/hifacegan_arch.py†L71-L94】【F:others/hifacegan_arch.py†L151-L165】
+* **Speed/compute:** Multi-stage SPADE blocks and progressive upsampling are heavier than compact SR CNNs; runtime scales with resolution and training phase depth.【F:others/hifacegan_arch.py†L45-L94】
+* **Size/memory:** High due to multiple SPADE blocks and multi-level feature maps; memory grows with crop size and phase length.【F:others/hifacegan_arch.py†L28-L57】【F:others/hifacegan_arch.py†L82-L90】
+* **Textures:** SPADE conditioning and learned encoder provide strong texture/detail synthesis for face restoration tasks.【F:others/hifacegan_arch.py†L40-L94】【F:others/hifacegan_arch.py†L145-L165】
+* **Advantages:** Progressive synthesis with SPADE conditioning yields high-quality face texture restoration; encoder swap allows task-specific conditioning.【F:others/hifacegan_arch.py†L10-L94】【F:others/hifacegan_arch.py†L145-L165】
+* **Cons:** Requires GAN training and higher compute; progressive stages increase latency and memory footprint.【F:others/hifacegan_arch.py†L45-L94】
+* **Schematic:** Input → LIPEncoder → SPADE ResBlocks → progressive upsampling → ToRGB → output.【F:others/hifacegan_arch.py†L71-L94】【F:others/hifacegan_arch.py†L151-L165】
+
+### 60) StyleGAN2 family
+* **Key features:** StyleGAN2 generator uses style MLP, constant input, modulated convolutions with noise injection, and ToRGB skip connections; discriminator uses ResBlocks with downsampling and group-stddev statistics; bilinear variant replaces upfirdn upsampling with interpolate-based upsampling in ToRGB skips.【F:others/stylegan2_arch.py†L12-L24】【F:others/stylegan2_arch.py†L394-L491】【F:others/stylegan2_arch.py†L704-L799】【F:others/stylegan2_bilinear_arch.py†L240-L333】
+* **Operating principle:** Style vectors → style MLP → modulated conv stack with per-layer noise → progressive ToRGB outputs; discriminator downsamples via ResBlocks to scalar output.【F:others/stylegan2_arch.py†L394-L799】
+* **Speed/compute:** Heavy due to modulated convs, per-layer noise, and large channel counts; bilinear variant trades filtering quality for simpler interpolation ops.【F:others/stylegan2_arch.py†L394-L491】【F:others/stylegan2_bilinear_arch.py†L247-L333】
+* **Size/memory:** Large parameter count with high channel multipliers; per-layer noise buffers and ToRGB stacks add memory overhead.【F:others/stylegan2_arch.py†L430-L467】
+* **Textures:** Style modulation and per-layer noise excel at stochastic texture synthesis; ToRGB skip connections preserve multi-scale detail.【F:others/stylegan2_arch.py†L394-L491】【F:others/stylegan2_arch.py†L512-L560】
+* **Advantages:** High-fidelity GAN synthesis with strong texture modeling; discriminator provides robust adversarial feedback for restoration tasks.【F:others/stylegan2_arch.py†L394-L799】
+* **Cons:** High compute/memory and GAN training complexity; bilinear variant may reduce sharpness vs upfirdn kernels.【F:others/stylegan2_arch.py†L394-L491】【F:others/stylegan2_bilinear_arch.py†L247-L333】
+* **Schematic:** Style codes → MLP → modulated conv stack + noise → ToRGB skips → output (with discriminator: ResBlocks → linear head).【F:others/stylegan2_arch.py†L394-L799】
