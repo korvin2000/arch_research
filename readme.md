@@ -71,6 +71,9 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 | 65 | **DAT family** | SR | `DAT`, `MSHAT` | `team15_BBox/model.py` (`DAT`), `team15_BBox/MSHAT_model.py` (`MSHAT`) |
 | 66 | **HAT family** | SR | `HAT`, `HATM`, `HATIQCMix` | `team18_XiaomiMM/model_2.py`, `team18_XiaomiMM/model_3.py`, `team18_XiaomiMM/model_1.py` |
 
+* show "overview.md" document in project root dir for short architecture analyzis
+
+
 ## Architectures 1–10: meta-information index
 
 ### 1) AdaRevID
