@@ -172,3 +172,105 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** Strong local texture recovery with configurable attention backends; adaptable to different hardware constraints.【F:ESC/esc_arch.py†L17-L35】【F:ESC/esc_arch.py†L90-L200】
 * **Cons:** Complexity and backend-specific behavior; training/testing choices affect reproducibility and performance.【F:ESC/esc_arch.py†L17-L35】
 * **Schematic:** Input → conv-attention + window-attention blocks → reconstruction head (ESC/ESCFP/ESCReal variants).【F:ESC/esc_arch.py†L90-L200】
+
+## Architectures 11–20: meta-information index
+
+### 11) RRDB_Net (ESRGANplus)
+* **Key features:** Stacks of RRDB blocks (Residual-in-Residual Dense Blocks) with residual dense sub-blocks, followed by upsampling (upconv or pixelshuffle) and HR reconstruction convs.【F:ESRGANplus/ESRGANplus_arch.py†L7-L35】【F:ESRGANplus/block.py†L235-L271】【F:ESRGANplus/block.py†L275-L310】
+* **Operating principle:** Shallow conv → deep RRDB trunk with residual scaling → LR conv → multi-step upsampling → HR conv output.【F:ESRGANplus/ESRGANplus_arch.py†L12-L35】【F:ESRGANplus/block.py†L235-L271】
+* **Speed/compute:** Pure convolutional dense blocks; typically faster than transformer-style SR, but compute grows with RRDB depth (`nb`) and growth channels (`gc`).【F:ESRGANplus/ESRGANplus_arch.py†L7-L35】【F:ESRGANplus/block.py†L200-L271】
+* **Size/memory:** Moderate-to-large due to dense connections inside each RRDB; memory scales with feature width and block count but remains predictable vs attention models.【F:ESRGANplus/ESRGANplus_arch.py†L7-L35】【F:ESRGANplus/block.py†L200-L271】
+* **Textures:** Dense residual mixing and deep conv stacks emphasize high-frequency detail reconstruction; no explicit global attention, so textures are local but rich.【F:ESRGANplus/block.py†L200-L271】
+* **Advantages:** Stable and classic SR baseline; strong local detail recovery with simple, deployable conv-only pipeline.【F:ESRGANplus/ESRGANplus_arch.py†L7-L35】
+* **Cons:** Limited global context vs attention/SSM approaches; quality gains scale with depth, increasing runtime and memory.【F:ESRGANplus/ESRGANplus_arch.py†L7-L35】
+* **Schematic:** Input → fea_conv → RRDB stack → LR_conv → upsample blocks → HR_conv → output.【F:ESRGANplus/ESRGANplus_arch.py†L12-L35】
+
+### 12) EvTexture
+* **Key features:** Dual-branch propagation with RGB flow alignment (SpyNet) and event-voxel texture enhancement via UNet + iterative update block, plus forward/backward trunks and 4× PixelShuffle reconstruction.【F:EvTexture/evtexture_arch.py†L12-L66】【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Operating principle:** Estimate optical flow between frames, propagate features backward/forward, and refine texture using event voxel grids through iterative updates; combine motion and texture branches before SR reconstruction.【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Speed/compute:** Heavy for VSR due to per-frame flow estimation, iterative voxel updates (per bin), and dual propagation; more expensive than single-image CNN SR.【F:EvTexture/evtexture_arch.py†L33-L66】【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Size/memory:** Higher memory from multi-frame features, flow fields, and iterative hidden states; scales with number of frames and voxel bins.【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Textures:** Event-driven texture branch explicitly targets fine detail and motion boundaries; strong on fast-motion textures where RGB alone blurs.【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Advantages:** Combines motion alignment and event textures for sharper VSR; robust to motion blur when event data is available.【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Cons:** Requires event voxel inputs; computationally heavy and more complex training/inference pipeline vs SR-only models.【F:EvTexture/evtexture_arch.py†L73-L176】
+* **Schematic:** Frames + event voxels → SpyNet flow + UNet event refinement → backward/forward propagation → PixelShuffle upsampling → output frames.【F:EvTexture/evtexture_arch.py†L33-L176】
+
+### 13) FAT
+* **Key features:** Swin-style window attention with relative position bias, channel/spatial attention, and FourierSparseSelfAttention; uses SRT blocks and UAFB for feature refinement.【F:FAT/FAT.py†L1-L120】【F:FAT/FAT.py†L340-L433】
+* **Operating principle:** Patch embed → stacked SRT blocks combining local window attention and Fourier attention → UAFB refinement → convolutional fusion and upsampling for SR.【F:FAT/FAT.py†L340-L433】
+* **Speed/compute:** Heavier than CNNs due to attention and Fourier modules; windowed attention keeps cost sub-quadratic but still larger than conv-only SR.【F:FAT/FAT.py†L1-L120】【F:FAT/FAT.py†L340-L433】
+* **Size/memory:** Moderate-to-high with attention projections, position bias tables, and extra attention modules (CA/SA/FSSA).【F:FAT/FAT.py†L1-L120】
+* **Textures:** Fourier attention + spatial/channel attention enhance high-frequency texture modeling and repeated patterns.【F:FAT/FAT.py†L90-L120】【F:FAT/FAT.py†L340-L433】
+* **Advantages:** Strong texture/detail recovery with both spatial attention and frequency-domain cues; suitable for high-quality SR at the cost of compute.【F:FAT/FAT.py†L1-L120】【F:FAT/FAT.py†L340-L433】
+* **Cons:** Larger runtime and memory than compact CNN SR; window attention still limits very long-range interactions without deeper stacks.【F:FAT/FAT.py†L1-L120】【F:FAT/FAT.py†L340-L433】
+* **Schematic:** Input → PatchEmbed → SRT block stack (window attention + FSSA) → UAFB → conv + upsample → output.【F:FAT/FAT.py†L340-L433】
+
+### 14) FDAT
+* **Key features:** Simplified dual attention blocks mixing fast spatial window attention and fast channel attention, with depthwise conv and AIM-based fusion inside residual groups; UniUpsampleV3 output head.【F:FDAT/fdat.py†L340-L435】
+* **Operating principle:** Shallow conv → multiple residual groups of alternating spatial/channel attention blocks → conv fusion → unified upsampler for SR.【F:FDAT/fdat.py†L360-L455】
+* **Speed/compute:** Designed as a faster transformer variant; attention is windowed and simplified, typically lighter than full Swin stacks but heavier than CNNs.【F:FDAT/fdat.py†L340-L455】
+* **Size/memory:** Moderate, with attention and AIM modules; scales with groups and block depth rather than full global attention length.【F:FDAT/fdat.py†L360-L455】
+* **Textures:** Dual spatial/channel attention improves local texture and edge fidelity compared to pure CNNs.【F:FDAT/fdat.py†L340-L425】
+* **Advantages:** Balanced speed/quality with simplified attention; modular residual groups ease scaling for light/tiny variants.【F:FDAT/fdat.py†L360-L455】
+* **Cons:** Still more complex than CNN SR; window attention may miss global context on very large structures.【F:FDAT/fdat.py†L360-L455】
+* **Schematic:** Input → conv_first → residual groups (spatial/channel attention + AIM) → conv_after → UniUpsampleV3 → output.【F:FDAT/fdat.py†L360-L455】
+
+### 15) HAIR
+* **Key features:** Multi-level encoder–decoder with HyLevel blocks, Hytrans/Hyattn-style attention, and feature-conditioned hyper-convolutions; uses a ResNet feature extractor to condition latent/decoder processing.【F:HAIR/HAIR_arch.py†L14-L120】【F:HAIR/HAIR_arch.py†L121-L176】
+* **Operating principle:** Overlap patch embedding → hierarchical encoder with downsampling → latent HyLevel conditioned on extracted features → symmetric decoder with skip connections and refinement → residual output.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Speed/compute:** Heavy due to multi-scale transformer blocks, hyper-convolutional attention, and deep refinement stages; slower than lightweight CNN SR/restoration models.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Size/memory:** Large memory footprint from multi-scale features and hyper-network conditioning; scales with block counts and head sizes.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Textures:** Attention-driven blocks and feature-conditioned processing enhance texture and structure detail, especially in restoration tasks with complex degradations.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Advantages:** Strong hierarchical modeling with adaptive conditioning; good for complex restoration with multi-scale context.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Cons:** High compute and memory; complexity makes deployment and tuning harder than simpler baselines.【F:HAIR/HAIR_arch.py†L32-L120】
+* **Schematic:** Input → patch embed → encoder levels (downsample) → HyLevel latent + feature conditioning → decoder levels (upsample + skips) → refinement → output + residual.【F:HAIR/HAIR_arch.py†L32-L120】
+
+### 16) LSTMConvSR
+* **Key features:** Hybrid blocks combining Vision LSTM-style attention (ViLBlockPair) with CNN residual stacks, fused by conv; deep residual groups with upsampling heads.【F:LSTMConvSR/LSTMConvSR_arch.py†L43-L120】【F:LSTMConvSR/LSTMConvSR_arch.py†L120-L220】
+* **Operating principle:** Shallow conv → repeated blocks that process features through a sequence-modeling (LSTM-like) branch and CNN branch → fusion → residual groups → PixelShuffle upsampling.【F:LSTMConvSR/LSTMConvSR_arch.py†L43-L120】【F:LSTMConvSR/LSTMConvSR_arch.py†L160-L260】
+* **Speed/compute:** Heavier than pure CNNs due to LSTM-style sequence mixing; still likely cheaper than full transformers, but slower than DiMoSR-style CNN SR.【F:LSTMConvSR/LSTMConvSR_arch.py†L43-L120】
+* **Size/memory:** Moderate-to-high; dual-branch blocks and residual groups increase parameter count and activations vs CNN-only models.【F:LSTMConvSR/LSTMConvSR_arch.py†L84-L220】
+* **Textures:** CNN branch preserves local texture; LSTM-style mixing adds broader context for coherent detail across regions.【F:LSTMConvSR/LSTMConvSR_arch.py†L43-L120】
+* **Advantages:** Blends local detail modeling with longer-range dependencies without full attention cost; flexible depth/width scaling.【F:LSTMConvSR/LSTMConvSR_arch.py†L84-L220】
+* **Cons:** More complex than standard CNN SR; sequence mixing still adds overhead and may be sensitive to resolution.【F:LSTMConvSR/LSTMConvSR_arch.py†L43-L120】
+* **Schematic:** Input → conv_first → (LSTM-like branch + CNN branch) fusion blocks → residual groups → upsampler → output.【F:LSTMConvSR/LSTMConvSR_arch.py†L84-L220】
+
+### 17) LoFormer family
+* **Key features:** LoFormer uses window/grid-based transformer blocks with down/up-sampling, while FNAFNet is a NAFNet-style encoder–decoder with FFT-aware blocks; DeepDeblur is a multi-stage pyramid restoration network.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Operating principle:** LoFormer applies overlap patch embedding and stacked transformer blocks across encoder/decoder levels; FNAFNet uses NAF-style blocks (with FFT modules) in a U-Net-like structure; DeepDeblur runs coarse-to-fine stages over an image pyramid with successive refinements.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Speed/compute:** LoFormer and FNAFNet are heavier than pure CNNs due to transformer/FFT blocks; DeepDeblur’s multi-stage pyramid adds extra passes but is conv-only per stage.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Size/memory:** LoFormer/FNAFNet use multi-level features and attention/FFT modules, increasing memory; DeepDeblur scales with pyramid depth and per-stage feature width.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Textures:** FFT-aware FNAFNet blocks and LoFormer attention favor texture/detail recovery; DeepDeblur improves coarse-to-fine texture stabilization across scales.【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Advantages:** Diverse options: LoFormer for attention-heavy restoration, FNAFNet for FFT-enhanced NAF-style efficiency, DeepDeblur for robust multi-scale refinement.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Cons:** Complexity and compute vary by variant; LoFormer/FNAFNet require careful tuning for stability, DeepDeblur adds latency due to multi-stage pyramid.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+* **Schematic:** LoFormer: Input → overlap embed → encoder blocks ↓ → middle blocks → decoder blocks ↑ → output. FNAFNet: Input → NAF blocks ↓ → middle → NAF blocks ↑ → output + residual. DeepDeblur: image pyramid → stage1 → upsample → stage2 → upsample → stage3.【F:LoFormer/LoFormer_arch.py†L600-L740】【F:LoFormer/FNAFNet_arch.py†L311-L410】【F:LoFormer/DeepDeblur_arch.py†L140-L200】
+
+### 18) MEASNet (IRmodel)
+* **Key features:** Task prompt generation, task-harmonization blocks (STPG_G_MESE), frequency-aware MEE experts (FD_MEE), and a multi-level transformer encoder–decoder backbone.【F:MEASNet/MEASNet.py†L260-L350】
+* **Operating principle:** Generate task prompts from input, inject them into encoder stages, process with multi-scale transformer blocks, and refine with expert modules before residual output.【F:MEASNet/MEASNet.py†L260-L350】
+* **Speed/compute:** Heavier than plain Restormer/NAFNet due to prompt conditioning and multiple expert modules; compute scales with stage depth and expert count.【F:MEASNet/MEASNet.py†L260-L350】
+* **Size/memory:** Larger memory footprint from prompt tensors and expert modules; multi-scale encoder/decoder adds activation overhead.【F:MEASNet/MEASNet.py†L260-L350】
+* **Textures:** Frequency-aware modules and task prompts help adapt to different degradations, improving texture recovery across tasks.【F:MEASNet/MEASNet.py†L240-L350】
+* **Advantages:** Task-adaptive restoration with explicit prompts and expert routing; flexible across multiple degradation types.【F:MEASNet/MEASNet.py†L260-L350】
+* **Cons:** More complex training/inference; extra modules increase latency and memory vs simpler transformer restorers.【F:MEASNet/MEASNet.py†L260-L350】
+* **Schematic:** Input → task prompt → encoder (with task harmonization) → latent → decoder (+ expert modules) → refinement → output + residual.【F:MEASNet/MEASNet.py†L260-L350】
+
+### 19) MP-HSIR
+* **Key features:** Hyperspectral restoration with prompt-driven attention blocks (PGSSTB), text prompts, and prompt fusion modules at multiple scales.【F:MP-HSIR/MP_HSIR.py†L720-L835】
+* **Operating principle:** Overlap patch embedding → multi-level encoder blocks → latent → decoder with prompt fusion conditioned on text prompts → refinement → residual output.【F:MP-HSIR/MP_HSIR.py†L740-L835】
+* **Speed/compute:** Attention-heavy with prompt conditioning; heavier than standard CNN hyperspectral models but localized via windowed blocks.【F:MP-HSIR/MP_HSIR.py†L720-L835】
+* **Size/memory:** Moderate-to-high; prompt tensors and multi-scale attention blocks increase parameters and activations, scaling with spectral channels and window size.【F:MP-HSIR/MP_HSIR.py†L720-L835】
+* **Textures:** Windowed attention and prompt fusion can preserve fine spectral-spatial textures across bands, aiding detailed hyperspectral reconstruction.【F:MP-HSIR/MP_HSIR.py†L740-L835】
+* **Advantages:** Task-aware prompts support multi-task hyperspectral restoration; explicit prompt fusion improves adaptation across degradations.【F:MP-HSIR/MP_HSIR.py†L740-L835】
+* **Cons:** Requires prompt generation and task IDs; heavier than compact hyperspectral CNNs, with more tuning complexity.【F:MP-HSIR/MP_HSIR.py†L720-L835】
+* **Schematic:** Input → patch embed → encoder blocks → latent → decoder + prompt fusion → refinement → output + residual.【F:MP-HSIR/MP_HSIR.py†L740-L835】
+
+### 20) MoCEIR
+* **Key features:** Encoder–decoder with frequency embedding, decoder residual groups using mixture-of-experts attention layers, and complexity-aware routing (rank/top-k).【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Operating principle:** Encode multi-level features, compute a frequency embedding via high-pass filtering, and decode with expert layers conditioned on the frequency embedding; residual output with refinement.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Speed/compute:** Potentially heavy due to MoE experts and multi-level encoder/decoder; compute can be modulated via rank/top-k routing settings.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Size/memory:** Larger than single-expert models; expert parameters and frequency embedding add overhead, scaling with number of experts and stage depth.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Textures:** Frequency embedding guides expert selection toward high-frequency detail recovery; good for texture-rich restoration tasks.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Advantages:** Adaptive expert routing for diverse degradations; frequency-aware conditioning can improve texture fidelity without full global attention.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Cons:** MoE complexity increases training instability and inference overhead; routing adds extra configuration and memory needs.【F:MoCE-IR/moce_ir.py†L720-L845】
+* **Schematic:** Input → patch embed → encoder levels ↓ → latent → frequency embedding → decoder with MoE blocks ↑ → refinement → output + residual.【F:MoCE-IR/moce_ir.py†L720-L845】
