@@ -478,3 +478,105 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** Combines global token context with local patch attention, offering strong texture/detail modeling for SR tasks.【F:arches/catanet_arch.py†L113-L233】【F:arches/catanet_arch.py†L440-L487】
 * **Cons:** Heavier than CNN baselines; attention hyperparameters (patch sizes, tokens) require tuning for speed/memory balance.【F:arches/catanet_arch.py†L440-L487】
 * **Schematic:** Input → conv → [TAB → LRSA → mid conv]×N → PixelShuffle upsample → final conv → output + bilinear base.【F:arches/catanet_arch.py†L440-L527】
+
+## Architectures 41–50: meta-information index
+
+### 41) HyperionSR
+* **Key features:** Dual attention per block (spatial gate + channel attention), GroupNorm, and a transformer-style GatedFFN inside residual groups; shallow/deep fusion and PixelShuffle upsampling in the main model.【F:arches/hyperionsr_arch.py†L26-L138】【F:arches/hyperionsr_arch.py†L173-L208】
+* **Operating principle:** Shallow conv → stacked ResidualGroups of HyperionBlocks → fusion conv + long skip → PixelShuffle upsampler → output conv.【F:arches/hyperionsr_arch.py†L84-L120】【F:arches/hyperionsr_arch.py†L173-L208】
+* **Speed/compute:** CNN-style attention/FFN blocks (no global self-attention) keep compute lower than transformer SR; runtime scales with num_groups × num_blocks and feature width.【F:arches/hyperionsr_arch.py†L84-L120】【F:arches/hyperionsr_arch.py†L173-L208】
+* **Size/memory:** Variant sizes explicitly scale num_feat, num_groups, and num_blocks (S/M/L/XL), increasing parameters and activations with depth/width.【F:arches/hyperionsr_arch.py†L125-L170】
+* **Textures:** Spatial + channel attention highlight salient texture regions while GatedFFN enriches local feature mixing for detail recovery.【F:arches/hyperionsr_arch.py†L40-L111】
+* **Advantages:** Strong local detail modeling with stable normalization and residual hierarchy; straightforward deployment with PixelShuffle head.【F:arches/hyperionsr_arch.py†L84-L208】
+* **Cons:** Lacks explicit long-range token attention; depth/width increases are the primary lever for quality gains, raising compute and memory.【F:arches/hyperionsr_arch.py†L125-L208】
+* **Schematic:** Input → conv_in → [ResidualGroup(HyperionBlock)]×N → fusion + skip → PixelShuffle → conv_out.【F:arches/hyperionsr_arch.py†L84-L208】
+
+### 42) LKFMixer
+* **Key features:** Partial Large Kernel Block (PLKB) with separable large-kernel depthwise convs, feature distillation/modulation/selection blocks (FDB/SFMB/FSB), and depthwise conv fusion before PixelShuffle upsampling.【F:arches/lkfmixer_arch.py†L8-L175】【F:arches/lkfmixer_arch.py†L249-L300】
+* **Operating principle:** Input conv → stacked FMB layers (FDB → SFMB → FSB) → depthwise conv + activation → PixelShuffleDirect output with residual from early features.【F:arches/lkfmixer_arch.py†L151-L300】
+* **Speed/compute:** Pure conv design with large-kernel depthwise ops; typically faster than attention SR but heavier than small-kernel CNNs due to large-kernel depthwise convs and multi-branch modulation.【F:arches/lkfmixer_arch.py†L11-L170】
+* **Size/memory:** Moderate; parameters scale with channels, num_block, and large_kernel, but no attention buffers or token projections.【F:arches/lkfmixer_arch.py†L11-L300】
+* **Textures:** Large-kernel depthwise convs and modulation blocks expand receptive field and enhance texture/detail capture without global attention.【F:arches/lkfmixer_arch.py†L11-L170】
+* **Advantages:** Efficient large-kernel mixing for texture recovery with simple PixelShuffle head; easy to deploy.【F:arches/lkfmixer_arch.py†L11-L300】
+* **Cons:** Limited global/contextual modeling beyond large-kernel receptive field; performance depends on kernel size and split_factor tuning.【F:arches/lkfmixer_arch.py†L11-L175】
+* **Schematic:** Input → conv → [FMB (FDB → SFMB → FSB)]×N → depthwise conv → PixelShuffleDirect → output + residual.【F:arches/lkfmixer_arch.py†L151-L300】
+
+### 43) TSPANv2
+* **Key features:** TemporalSPANBlock processes 3-frame windows with SPAB blocks, multi-stage temporal reduction, reflection padding, and residual from center frame; PixelShuffle-based upsampling head.【F:arches/temporal_span_v2_arch.py†L260-L360】【F:arches/temporal_span_v2_arch.py†L386-L466】
+* **Operating principle:** Per-frame head conv → sliding 3-frame temporal windows through TemporalSPANBlocks → temporal dimension shrinks to one frame → optional residual from center frame → upsample + output conv with padding removal.【F:arches/temporal_span_v2_arch.py†L333-L466】
+* **Speed/compute:** Heavier than single-image SR due to temporal window loops and per-layer sliding windows; compute scales with clip_size and num_blocks per temporal layer.【F:arches/temporal_span_v2_arch.py†L333-L458】
+* **Size/memory:** Higher memory usage for multi-frame feature stacks and intermediate temporal outputs; checkpointing option trades compute for memory.【F:arches/temporal_span_v2_arch.py†L260-L360】【F:arches/temporal_span_v2_arch.py†L333-L458】
+* **Textures:** Temporal aggregation and SPAB-based feature fusion preserve dynamic textures and motion details across frames.【F:arches/temporal_span_v2_arch.py†L260-L360】【F:arches/temporal_span_v2_arch.py†L333-L458】
+* **Advantages:** Strong temporal consistency and texture recovery for video SR; explicit residual from center frame stabilizes outputs.【F:arches/temporal_span_v2_arch.py†L333-L466】
+* **Cons:** Higher latency and memory than single-frame models; clip_size must be odd and fixed at inference.【F:arches/temporal_span_v2_arch.py†L347-L366】
+* **Schematic:** Frames → head conv → [TemporalSPANBlock on 3-frame windows]×L → center residual → PixelShuffle → output frame.【F:arches/temporal_span_v2_arch.py†L333-L466】
+
+### 44) ATD
+* **Key features:** Adaptive Token Dictionary cross-attention (ATD_CA) and category-based multihead self-attention (AC_MSA) combined with window attention inside ATDTransformerLayer, plus patch embed/unembed and transformer SR backbone.【F:atd/arch.py†L194-L281】【F:atd/arch.py†L337-L463】【F:atd/arch.py†L829-L920】
+* **Operating principle:** Patch embedding → stacked ATDTransformerLayers mixing window attention + token dictionary cross-attention + category grouping → patch unembed → upsampler/residual reconstruction.【F:atd/arch.py†L337-L540】【F:atd/arch.py†L829-L920】
+* **Speed/compute:** Attention-heavy; ATD_CA and AC_MSA add token dictionary and grouping ops beyond window attention, increasing compute compared to pure Swin SR models.【F:atd/arch.py†L194-L463】
+* **Size/memory:** Moderate-to-high; token dictionaries and attention projections add parameters and activation memory proportional to num_tokens and head count.【F:atd/arch.py†L194-L463】
+* **Textures:** Token dictionary attention and category grouping provide richer global context for fine textures beyond local windows.【F:atd/arch.py†L194-L463】
+* **Advantages:** Strong global + local modeling via adaptive token dictionary and window attention; suitable for high-fidelity SR.【F:atd/arch.py†L337-L463】【F:atd/arch.py†L829-L920】
+* **Cons:** Higher compute and memory than CNN SR; multiple attention paths increase tuning complexity and latency.【F:atd/arch.py†L337-L463】
+* **Schematic:** Input → patch embed → [ATDTransformerLayer (window attn + ATD_CA + AC_MSA)]×N → patch unembed → upsample → output.【F:atd/arch.py†L337-L463】【F:atd/arch.py†L829-L920】
+
+### 45) DRCT
+* **Key features:** Residual Dense Group (RDG) built from multiple SwinTransformerBlocks with growth-channel concatenation, plus patch embed/unembed and Swin-style window attention backbone.【F:drct/DRCT_arch.py†L267-L414】【F:drct/DRCT_arch.py†L417-L520】
+* **Operating principle:** Shallow conv → patch embed → stacked RDG stages (dense Swin blocks + conv adjustments) → patch unembed → reconstruction/upsampling head.【F:drct/DRCT_arch.py†L267-L414】【F:drct/DRCT_arch.py†L767-L860】
+* **Speed/compute:** Window attention with dense concatenation is heavier than standard Swin SR; compute scales with depth, window_size, and growth-channel gc.【F:drct/DRCT_arch.py†L267-L353】【F:drct/DRCT_arch.py†L767-L860】
+* **Size/memory:** Large for deep configs; RDG concatenation increases activation memory due to multiple intermediate feature maps.【F:drct/DRCT_arch.py†L267-L414】
+* **Textures:** Dense Swin blocks and residual grouping preserve local texture detail while enabling richer feature reuse across blocks.【F:drct/DRCT_arch.py†L267-L414】
+* **Advantages:** Strong texture/detail reconstruction from dense Swin-style stages; hierarchical residual structure improves stability.【F:drct/DRCT_arch.py†L267-L414】【F:drct/DRCT_arch.py†L767-L860】
+* **Cons:** Higher compute and memory vs lighter window-attention SR models; dense concatenation increases latency at high resolution.【F:drct/DRCT_arch.py†L267-L353】
+* **Schematic:** Input → conv_first → patch embed → [RDG (Swin blocks + dense concat)]×N → patch unembed → upsample → output.【F:drct/DRCT_arch.py†L267-L414】【F:drct/DRCT_arch.py†L767-L860】
+
+### 46) FlexNet
+* **Key features:** TransformerBlock with RMSNorm + LMLTVIT attention and ChannelMix FFN, linear/meta pipelines of stacked blocks, and selectable upsamplers (pixelshuffle, nearest+conv, DySample).【F:flexnet/flexnet_arch.py†L300-L396】【F:flexnet/flexnet_arch.py†L618-L702】
+* **Operating principle:** Input conv + shortcut → pipeline (LinearPipeline/MetaPipeline of TransformerBlocks with conv fusion) → concatenate with shortcut → upsampler head → crop to target size.【F:flexnet/flexnet_arch.py†L356-L520】【F:flexnet/flexnet_arch.py†L618-L704】
+* **Speed/compute:** Windowed attention + FFN blocks are heavier than pure CNN SR; linear pipeline is simpler while meta pipeline increases effective receptive field (scaled window size) at extra cost.【F:flexnet/flexnet_arch.py†L318-L520】【F:flexnet/flexnet_arch.py†L646-L694】
+* **Size/memory:** Moderate-to-high depending on num_blocks and pipeline type; attention projections and intermediate block states dominate memory over conv-only baselines.【F:flexnet/flexnet_arch.py†L318-L520】【F:flexnet/flexnet_arch.py†L618-L704】
+* **Textures:** Attention-driven token mixing with channel FFN improves texture refinement while conv fusion preserves local structure.【F:flexnet/flexnet_arch.py†L318-L396】【F:flexnet/flexnet_arch.py†L356-L520】
+* **Advantages:** Configurable pipeline with multiple upsamplers; balances attention-based detail modeling with residual shortcut stability.【F:flexnet/flexnet_arch.py†L618-L704】
+* **Cons:** Attention cost and padding to window-size multiples can increase latency; meta pipeline requires larger padding due to scaled window size.【F:flexnet/flexnet_arch.py†L646-L694】
+* **Schematic:** Input → conv + shortcut → (Linear/Meta TransformerBlocks) → concat → upsample → output crop.【F:flexnet/flexnet_arch.py†L356-L520】【F:flexnet/flexnet_arch.py†L618-L704】
+
+### 47) GateRV3
+* **Key features:** MetaGated blocks combining local depthwise gated convs + channel attention + global GatedCNNBlock, encoder–decoder with PixelUnshuffle/PixelShuffle scaling, and SPAB-based SISR head plus latent gated stack.【F:gaterv3/gaterv3_arch.py†L259-L387】【F:gaterv3/gaterv3_arch.py†L389-L520】
+* **Operating principle:** Input conv → gated encoder blocks with downsampling → latent gated stack → gated decoder with skip connections → SPAB refinement head → upsampler to output.【F:gaterv3/gaterv3_arch.py†L324-L520】
+* **Speed/compute:** Convolutional gating is lighter than global attention, but encoder–decoder depth and latent blocks increase compute; optional attention in GatedCNNBlock adds overhead.【F:gaterv3/gaterv3_arch.py†L259-L520】
+* **Size/memory:** Moderate-to-high with multiple gated blocks and encoder/decoder features; skip connections keep high-resolution activations in memory.【F:gaterv3/gaterv3_arch.py†L324-L520】
+* **Textures:** MetaGated mixing plus SPAB refinement improves local texture detail while retaining global context through latent gated blocks.【F:gaterv3/gaterv3_arch.py†L259-L520】
+* **Advantages:** Hybrid encoder–decoder with strong local gating and flexible upsampling; good balance of structure and texture refinement.【F:gaterv3/gaterv3_arch.py†L324-L520】
+* **Cons:** Deeper pipeline and latent blocks raise latency; more complex than compact SR CNNs.【F:gaterv3/gaterv3_arch.py†L324-L520】
+* **Schematic:** Input → gated encoder ↓ → latent gated blocks → gated decoder ↑ + skips → SPAB head → upsample → output.【F:gaterv3/gaterv3_arch.py†L324-L520】
+
+### 48) GFISRV2
+* **Key features:** FourierUnit with rfft/irfft processing, InceptionDWConv2d mixing frequency + spatial branches, and GatedCNNBlock stack followed by residual conv tail and flexible UniUpsampleV3 head.【F:gfisrv2/gfisrv2_arch.py†L546-L677】【F:gfisrv2/gfisrv2_arch.py†L689-L752】
+* **Operating principle:** Input conv (optional PixelUnshuffle) → sequential GatedCNNBlocks with InceptionDWConv2d → residual conv tail → UniUpsampleV3 → output crop.【F:gfisrv2/gfisrv2_arch.py†L604-L752】
+* **Speed/compute:** Mostly convolutional but FourierUnit adds FFT overhead; compute scales with n_blocks and frequency branches, heavier than plain CNNs but lighter than full attention SR.【F:gfisrv2/gfisrv2_arch.py†L546-L752】
+* **Size/memory:** Moderate; FourierUnit and InceptionDWConv2d add parameters and FFT intermediate buffers but avoid attention matrices.【F:gfisrv2/gfisrv2_arch.py†L546-L677】
+* **Textures:** Frequency-domain mixing enhances high-frequency texture recovery, while inception depthwise branches capture directional details.【F:gfisrv2/gfisrv2_arch.py†L546-L677】
+* **Advantages:** Strong texture/detail reconstruction with frequency-aware modeling; still convolutional and deployable.【F:gfisrv2/gfisrv2_arch.py†L546-L752】
+* **Cons:** FFT operations increase latency on some hardware; memory overhead from complex-valued transforms in FourierUnit.【F:gfisrv2/gfisrv2_arch.py†L546-L620】
+* **Schematic:** Input → (PixelUnshuffle) → GatedCNNBlock stack + residual conv → UniUpsampleV3 → output.【F:gfisrv2/gfisrv2_arch.py†L689-L752】
+
+### 49) GRL
+* **Key features:** TransformerStage built from EfficientMixAttnTransformerBlocks combining window attention and stripe attention (global/regional/local modeling), plus configurable anchor projections and local conv residuals.【F:grl/grl.py†L36-L166】【F:grl/grl.py†L190-L260】
+* **Operating principle:** Patch-like feature processing with mixed attention blocks inside TransformerStages → residual conv → reconstruction/upsampling in GRL backbone for restoration/SR tasks.【F:grl/grl.py†L36-L180】【F:grl/grl.py†L190-L260】
+* **Speed/compute:** Mixed window+stripe attention is heavier than CNNs but more efficient than full global attention by limiting attention regions to windows/stripes and anchor reductions.【F:grl/grl.py†L36-L166】
+* **Size/memory:** Moderate-to-high; attention projections and mixed-attention buffers increase memory relative to conv-only models.【F:grl/grl.py†L36-L166】
+* **Textures:** Local window attention captures fine textures, while stripe attention improves long-range consistency across patterns.【F:grl/grl.py†L36-L166】
+* **Advantages:** Explicit multi-scale attention (global/regional/local) gives strong restoration quality with controllable attention region sizes.【F:grl/grl.py†L36-L166】
+* **Cons:** Attention complexity and multiple configuration knobs (window/stripe sizes, anchors) complicate tuning and can raise memory use.【F:grl/grl.py†L36-L166】
+* **Schematic:** Input → TransformerStages (window + stripe attention blocks) → residual conv → upsampling/output head.【F:grl/grl.py†L36-L180】
+
+### 50) MoESR
+* **Key features:** GatedCNNBlock with InceptionDWConv2d, MSG module (PixelUnshuffle → gated blocks → PixelShuffle), and stacked Blocks with residual scaling before UniUpsample head.【F:moesr/arch.py†L120-L205】【F:moesr/arch.py†L167-L240】
+* **Operating principle:** Input conv → stacked Blocks (GatedCNNBlock stack + MSG) → residual add → upsample to output with UniUpsample.【F:moesr/arch.py†L167-L240】
+* **Speed/compute:** Convolutional gating and MSG down/up paths are lighter than attention models; compute scales with n_blocks and block depth but remains CNN-class runtime.【F:moesr/arch.py†L167-L240】
+* **Size/memory:** Moderate; multiple gated blocks and MSG add parameters, but no attention matrices or token buffers.【F:moesr/arch.py†L120-L240】
+* **Textures:** Inception-style depthwise convs plus multiscale MSG path help recover textures and edges with expanded receptive field.【F:moesr/arch.py†L120-L205】
+* **Advantages:** Efficient CNN-based SR with multiscale gating; deployable with flexible upsampler options.【F:moesr/arch.py†L167-L240】
+* **Cons:** Limited explicit global attention; quality gains depend on block depth and expansion settings.【F:moesr/arch.py†L167-L240】
+* **Schematic:** Input → conv_in → [Blocks (GatedCNNBlocks + MSG)]×N → residual → UniUpsample → output.【F:moesr/arch.py†L167-L240】
