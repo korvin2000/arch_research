@@ -376,3 +376,105 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** Frequency-aware refinement with transformer backbone provides strong restoration quality for diverse degradations.【F:SIPL/adair_arch.py†L315-L520】
 * **Cons:** More complex and heavier than NAF-style CNNs; FFT/cross-attn modules increase runtime and tuning burden.【F:SIPL/adair_arch.py†L70-L220】【F:SIPL/adair_arch.py†L315-L396】
 * **Schematic:** Input → overlap patch embed → transformer encoder ↓ → latent → FreModule-guided decoder ↑ → refinement → output + residual.【F:SIPL/adair_arch.py†L410-L520】
+
+## Architectures 31–40: meta-information index
+
+### 31) SeemoRe
+* **Key features:** Residual groups combine a local MoE block (RME → MoEBlock/Router/Expert with top‑k routing) and a global block (SME → StripedConvFormer using striped depthwise convs), with GatedFFN for feed-forward mixing.【F:SeeMore/seemore_arch.py†L31-L118】【F:SeeMore/seemore_arch.py†L146-L209】【F:SeeMore/seemore_arch.py†L221-L313】
+* **Operating principle:** Shallow conv → stacked ResGroups (local MoE + global striped conv) → LayerNorm → conv + residual → PixelShuffle upsampling.【F:SeeMore/seemore_arch.py†L31-L78】【F:SeeMore/seemore_arch.py†L89-L143】
+* **Speed/compute:** MoE top‑k routing limits active experts per token, while striped convolutions keep global mixing convolutional rather than full attention; compute scales with expert count and top‑k.【F:SeeMore/seemore_arch.py†L221-L269】
+* **Size/memory:** Increases with number of experts and layers; MoELayer holds multiple Expert modules plus Router weights.【F:SeeMore/seemore_arch.py†L244-L269】【F:SeeMore/seemore_arch.py†L287-L313】
+* **Textures:** Local MoE calibration + striped global convs emphasize texture recovery with mixed receptive fields and gated FFN refinement.【F:SeeMore/seemore_arch.py†L102-L118】【F:SeeMore/seemore_arch.py†L146-L209】
+* **Advantages:** Adaptive expert routing and global striped mixing offer a flexible quality/compute balance for SR textures.【F:SeeMore/seemore_arch.py†L146-L209】【F:SeeMore/seemore_arch.py†L221-L269】
+* **Cons:** MoE routing adds complexity and extra parameters; performance depends on top‑k and expert configuration.【F:SeeMore/seemore_arch.py†L221-L269】
+* **Schematic:** Input → conv → [ResGroup: MoE local → StripedConvFormer global]×N → norm → conv + residual → PixelShuffle output.【F:SeeMore/seemore_arch.py†L31-L143】
+
+### 32) UVM-Net
+* **Key features:** U‑Net backbone with DoubleConv blocks augmented by UVMB (Mamba-based SSM with multiple Mamba modules and softmax mixing) plus residual output.【F:UVM-Net/model.py†L6-L36】【F:UVM-Net/unet_part.py†L7-L37】【F:UVM-Net/uvmb.py†L7-L52】
+* **Operating principle:** U‑Net encoder/decoder with skip connections; each DoubleConv pre-processes features via UVMB at 64×64, then reconstructs and adds the input residual.【F:UVM-Net/model.py†L6-L35】【F:UVM-Net/unet_part.py†L7-L55】
+* **Speed/compute:** U‑Net conv cost plus Mamba SSM passes and fixed 64×64 interpolation inside DoubleConv; runtime grows with Mamba depth and input size due to interpolation overhead.【F:UVM-Net/unet_part.py†L21-L37】【F:UVM-Net/uvmb.py†L7-L52】
+* **Size/memory:** Moderate-to-high for a U‑Net because UVMB instantiates three Mamba modules (including one with d_model=w*h), adding parameter and activation cost.【F:UVM-Net/uvmb.py†L7-L39】
+* **Textures:** Skip connections preserve local textures; UVMB sequence mixing adds longer-range context to refine details.【F:UVM-Net/model.py†L16-L35】【F:UVM-Net/uvmb.py†L33-L52】
+* **Advantages:** Combines U‑Net stability with SSM mixing for stronger context without full attention.【F:UVM-Net/model.py†L6-L35】【F:UVM-Net/uvmb.py†L7-L52】
+* **Cons:** UVMB interpolation and Mamba modules add latency and memory vs pure U‑Net CNN baselines.【F:UVM-Net/unet_part.py†L21-L37】【F:UVM-Net/uvmb.py†L7-L52】
+* **Schematic:** Input → U‑Net down path (DoubleConv+UVMB) → up path with skips → out conv + input residual.【F:UVM-Net/model.py†L6-L35】【F:UVM-Net/unet_part.py†L7-L55】
+
+### 33) VLUNet
+* **Key features:** Restormer-style attention (MDTA) + GDFN feed-forward blocks, plus degradation-aware cross-attention via GDM with learned prompts and degradation vectors.【F:VLU-Net/vlu-net_arch.py†L57-L140】【F:VLU-Net/vlu-net_arch.py†L167-L260】
+* **Operating principle:** Overlap patch embedding → multi-level encoder/decoder of DUN_BaseBlocks (GDM + transformer blocks) with down/upsampling → refinement → output + residual.【F:VLU-Net/vlu-net_arch.py†L262-L371】
+* **Speed/compute:** Attention-heavy with multi-level transformer blocks and cross-attention prompts; compute scales with depth and head counts across encoder/decoder stages.【F:VLU-Net/vlu-net_arch.py†L84-L160】【F:VLU-Net/vlu-net_arch.py†L262-L371】
+* **Size/memory:** High for large variants due to multiple stages and prompt parameters inside GDM, plus attention activations per scale.【F:VLU-Net/vlu-net_arch.py†L167-L246】【F:VLU-Net/vlu-net_arch.py†L262-L371】
+* **Textures:** Attention and degradation-conditioned prompts help refine fine textures under varying degradations while maintaining structural consistency.【F:VLU-Net/vlu-net_arch.py†L167-L246】
+* **Advantages:** Degradation-aware conditioning plus transformer backbone yields flexible restoration across noise/blur regimes.【F:VLU-Net/vlu-net_arch.py†L167-L246】【F:VLU-Net/vlu-net_arch.py†L262-L371】
+* **Cons:** Heavier than CNN baselines; prompt conditioning and multi-scale attention increase tuning complexity and memory use.【F:VLU-Net/vlu-net_arch.py†L167-L246】【F:VLU-Net/vlu-net_arch.py†L262-L371】
+* **Schematic:** Input → patch embed → encoder levels ↓ → latent → decoder levels ↑ → refinement → output + residual.【F:VLU-Net/vlu-net_arch.py†L262-L371】
+
+### 34) DetailRefinerNet
+* **Key features:** EnhancedRefinementBlock with GELU and SE channel attention, grouped residual stacks, and long-range feature fusion via concatenation and 1×1 conv.【F:arches/detailrefinernet_arch.py†L8-L33】【F:arches/detailrefinernet_arch.py†L36-L92】
+* **Operating principle:** Initial conv → sequential ERB groups → concatenate group outputs → fusion conv → final conv → global residual add.【F:arches/detailrefinernet_arch.py†L55-L101】
+* **Speed/compute:** Pure CNN with small 3×3/1×1 convs; typically faster than attention/SSM models at similar depth.【F:arches/detailrefinernet_arch.py†L36-L101】
+* **Size/memory:** Moderate; parameters scale with num_groups and num_blocks_per_group, plus fusion conv for concatenated features.【F:arches/detailrefinernet_arch.py†L55-L92】
+* **Textures:** SE attention reweights channels for detail enhancement; local residual blocks preserve edges and textures.【F:arches/detailrefinernet_arch.py†L8-L52】
+* **Advantages:** Simple, efficient refinement network with channel attention and long-range fusion; easy to deploy.【F:arches/detailrefinernet_arch.py†L55-L101】
+* **Cons:** Lacks explicit global attention; texture modeling is local and depends on depth/width scaling.【F:arches/detailrefinernet_arch.py†L36-L101】
+* **Schematic:** Input → initial conv → ERB groups → concat + fusion → final conv → output + residual.【F:arches/detailrefinernet_arch.py†L55-L101】
+
+### 35) EMT
+* **Key features:** MixedTransformerBlock stacks combining SWSA window attention and TokenMixer blocks, Swish activations, and PixelShuffle-based upsampling tail.【F:arches/emt_arch.py†L340-L420】【F:arches/emt_arch.py†L520-L660】【F:arches/emt_arch.py†L568-L646】
+* **Operating principle:** MeanShift normalization → head conv → mixed transformer body with residual → Upsampler tail → add mean back.【F:arches/emt_arch.py†L568-L646】
+* **Speed/compute:** Window attention (SWSA) plus token mixing is heavier than pure CNN SR but cheaper than full global attention; compute scales with n_blocks × n_layers.【F:arches/emt_arch.py†L340-L420】【F:arches/emt_arch.py†L520-L660】
+* **Size/memory:** Moderate-to-high; attention projections and multiple transformer layers per block increase activations and parameters.【F:arches/emt_arch.py†L520-L646】
+* **Textures:** Window attention and token mixing capture local structures and repeated textures while maintaining efficient spatial mixing.【F:arches/emt_arch.py†L340-L420】【F:arches/emt_arch.py†L520-L660】
+* **Advantages:** Balanced transformer SR with efficient windowed attention and flexible upsampling options.【F:arches/emt_arch.py†L520-L646】
+* **Cons:** Still heavier than compact CNNs; window attention limits very long-range context without deeper stacks.【F:arches/emt_arch.py†L340-L420】【F:arches/emt_arch.py†L568-L646】
+* **Schematic:** Input → MeanShift → head conv → MixedTransformerBlocks → residual → Upsampler → output.【F:arches/emt_arch.py†L568-L646】
+
+### 36) ParagonSR
+* **Key features:** ParagonBlock combines multi-scale InceptionDWConv2d, GatedFFN, and reparameterizable ReparamConvV2; residual groups with LayerScale stabilize deep stacks.【F:arches/paragonsr_arch.py†L122-L206】【F:arches/paragonsr_arch.py†L208-L239】
+* **Operating principle:** conv_in → ResidualGroup stack → conv_fuse + residual → MagicKernelSharp2021 upsample → conv_out.【F:arches/paragonsr_arch.py†L245-L320】
+* **Speed/compute:** ReparamConvV2 can fuse branches for eval, reducing runtime overhead versus multi-branch training-time convs; overall cost scales with groups/blocks.【F:arches/paragonsr_arch.py†L62-L120】【F:arches/paragonsr_arch.py†L245-L320】
+* **Size/memory:** Scales with num_groups and num_blocks; multi-branch convs add parameters at training time but can be fused for deployment.【F:arches/paragonsr_arch.py†L62-L120】【F:arches/paragonsr_arch.py†L245-L320】
+* **Textures:** InceptionDWConv2d captures multi-scale spatial detail, while GatedFFN enhances texture transformation capacity.【F:arches/paragonsr_arch.py†L122-L170】
+* **Advantages:** High-quality CNN-first SR with deployable reparameterization and strong texture modeling.【F:arches/paragonsr_arch.py†L62-L120】【F:arches/paragonsr_arch.py†L245-L320】
+* **Cons:** More complex than plain residual CNNs; multi-branch training costs more compute/memory before fusion.【F:arches/paragonsr_arch.py†L62-L120】
+* **Schematic:** Input → conv_in → ResidualGroups → conv_fuse + residual → MagicKernelSharp upsample → conv_out.【F:arches/paragonsr_arch.py†L245-L320】
+
+### 37) ParagonSR2
+* **Key features:** Dual-path design: fixed MagicKernelSharp2021 base upsampler plus learned detail path; variants select lightweight conv blocks or window-attention photo/pro blocks; detail gain is learnable.【F:arches/paragonsr2_arch.py†L39-L129】【F:arches/paragonsr2_arch.py†L1171-L1308】
+* **Operating principle:** Base upsample → conv_in → residual groups (variant-dependent) → pixelshuffle detail → detail_gain → base + detail output.【F:arches/paragonsr2_arch.py†L1171-L1365】
+* **Speed/compute:** Base path is cheap; compute dominated by selected variant (realtime/stream conv vs photo/pro window attention), with optional checkpointing for memory trade-offs.【F:arches/paragonsr2_arch.py†L1171-L1308】
+* **Size/memory:** Scales with num_groups × num_blocks and variant; attention variants add window attention parameters and buffers (relative positions/masks).【F:arches/paragonsr2_arch.py†L1171-L1308】
+* **Textures:** Base reconstruction provides stable low-frequency content; learned detail path refines high-frequency textures and can leverage attention in photo/pro variants.【F:arches/paragonsr2_arch.py†L1171-L1365】
+* **Advantages:** Deployment-friendly dual-path SR with configurable speed/quality profiles and stable base reconstruction.【F:arches/paragonsr2_arch.py†L1171-L1308】
+* **Cons:** Attention variants are heavier; quality relies on balancing base/detail gain and variant-specific hyperparameters.【F:arches/paragonsr2_arch.py†L1171-L1308】
+* **Schematic:** Input → MagicKernelSharp base → conv_in → residual body → pixelshuffle detail → base + detail_gain × detail → output.【F:arches/paragonsr2_arch.py†L1171-L1365】
+
+### 38) ElysiumSR
+* **Key features:** Pure residual CNN with configurable ResidualBlock depth, DropPath stochastic depth, and PixelShuffle upsampling; multiple size variants share a common core.【F:arches/elysiumsr_arch.py†L55-L151】【F:arches/elysiumsr_arch.py†L169-L236】
+* **Operating principle:** conv_in → residual block stack (+ DropPath) → conv_fuse + residual → PixelShuffle upsampler → conv_out.【F:arches/elysiumsr_arch.py†L169-L236】
+* **Speed/compute:** Convolution-only design is faster than attention/SSM models; compute scales linearly with num_blocks and num_feat.【F:arches/elysiumsr_arch.py†L169-L236】
+* **Size/memory:** Scales with num_feat/num_blocks; no attention buffers, so memory is predictable and relatively light.【F:arches/elysiumsr_arch.py†L169-L236】
+* **Textures:** Residual blocks preserve local textures but lack explicit global context; DropPath can improve training robustness.【F:arches/elysiumsr_arch.py†L55-L151】
+* **Advantages:** Simple, stable, deployable CNN SR with multiple capacity tiers.【F:arches/elysiumsr_arch.py†L55-L151】【F:arches/elysiumsr_arch.py†L169-L236】
+* **Cons:** Limited global modeling compared to transformer/SSM approaches; texture refinement depends on depth/width scaling.【F:arches/elysiumsr_arch.py†L169-L236】
+* **Schematic:** Input → conv_in → residual blocks → conv_fuse + residual → PixelShuffle → conv_out.【F:arches/elysiumsr_arch.py†L169-L236】
+
+### 39) DIS
+* **Key features:** Minimal SR model with FastResBlock or depthwise LightBlock options, PixelShuffle upsampling, and global residual learning via bilinear base upsampling.【F:arches/dis_arch.py†L21-L120】【F:arches/dis_arch.py†L122-L206】
+* **Operating principle:** Head conv → lightweight residual body → fusion conv + residual → PixelShuffle upsampler → tail conv → add bilinear base.【F:arches/dis_arch.py†L137-L206】
+* **Speed/compute:** Designed for speed with minimal depth, no attention, and optional depthwise separable convs; typically faster than transformer SRs.【F:arches/dis_arch.py†L12-L120】【F:arches/dis_arch.py†L122-L206】
+* **Size/memory:** Small parameter count; memory dominated by feature maps rather than attention buffers.【F:arches/dis_arch.py†L137-L206】
+* **Textures:** Local conv-only modeling, so texture recovery is limited to local receptive fields; global residual preserves coarse structure.【F:arches/dis_arch.py†L137-L206】
+* **Advantages:** Very fast and simple SR baseline; easy to deploy and scale to real-time use cases.【F:arches/dis_arch.py†L70-L120】【F:arches/dis_arch.py†L122-L206】
+* **Cons:** Limited global context and lower detail capacity versus attention/SSM-based SR models.【F:arches/dis_arch.py†L137-L206】
+* **Schematic:** Input → head conv → FastRes/Light blocks → fusion → PixelShuffle upsample → tail conv → output + bilinear base.【F:arches/dis_arch.py†L137-L206】
+
+### 40) catanet
+* **Key features:** Alternates global TAB (token aggregation with IRCA/IASA attention) and local LRSA blocks, with patch-based attention windows and ConvFFN mixing.【F:arches/catanet_arch.py†L113-L233】【F:arches/catanet_arch.py†L332-L389】【F:arches/catanet_arch.py†L440-L487】
+* **Operating principle:** First conv → repeated [TAB + LRSA + mid conv] residual blocks → PixelShuffle upsampling → final conv + global bilinear residual.【F:arches/catanet_arch.py†L440-L527】
+* **Speed/compute:** Attention-heavy due to token grouping and scaled dot-product attention; compute depends on patch_size, num_tokens, and group_size schedules.【F:arches/catanet_arch.py†L113-L233】【F:arches/catanet_arch.py†L440-L487】
+* **Size/memory:** Moderate-to-high; maintains token statistics (means buffers) and attention projections across multiple blocks and heads.【F:arches/catanet_arch.py†L196-L233】【F:arches/catanet_arch.py†L440-L487】
+* **Textures:** Global token aggregation (TAB) plus local patch attention (LRSA) improves texture/detail recovery across scales and patterns.【F:arches/catanet_arch.py†L113-L233】【F:arches/catanet_arch.py†L332-L389】
+* **Advantages:** Combines global token context with local patch attention, offering strong texture/detail modeling for SR tasks.【F:arches/catanet_arch.py†L113-L233】【F:arches/catanet_arch.py†L440-L487】
+* **Cons:** Heavier than CNN baselines; attention hyperparameters (patch sizes, tokens) require tuning for speed/memory balance.【F:arches/catanet_arch.py†L440-L487】
+* **Schematic:** Input → conv → [TAB → LRSA → mid conv]×N → PixelShuffle upsample → final conv → output + bilinear base.【F:arches/catanet_arch.py†L440-L527】
