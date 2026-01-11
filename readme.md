@@ -682,3 +682,65 @@ This repository aggregates PyTorch architectures for **super-resolution (SR)** a
 * **Advantages:** High-fidelity GAN synthesis with strong texture modeling; discriminator provides robust adversarial feedback for restoration tasks.【F:others/stylegan2_arch.py†L394-L799】
 * **Cons:** High compute/memory and GAN training complexity; bilinear variant may reduce sharpness vs upfirdn kernels.【F:others/stylegan2_arch.py†L394-L491】【F:others/stylegan2_bilinear_arch.py†L247-L333】
 * **Schematic:** Style codes → MLP → modulated conv stack + noise → ToRGB skips → output (with discriminator: ResBlocks → linear head).【F:others/stylegan2_arch.py†L394-L799】
+
+## Architectures 61–66: meta-information index
+
+### 61) PLKSR family
+* **Key features:** PLKBlock combines convolutional channel mixers (CCM/ICCM/DCCM) with Partial Large Kernel (PLK) convolution variants, optional element-wise attention (EA), and re-parameterizable large-kernel branches (SparsePLK/RectSparsePLK). RealPLKSR adds GroupNorm, optional DySample upsampler, and lightweight dropout for deployment variants.【F:plksr/plksr_arch.py†L17-L406】【F:plksr/realplksr_arch.py†L11-L151】
+* **Operating principle:** Input conv → N×PLKBlock (channel mix → large-kernel partial conv → EA → refine) → output conv → residual add with repeated input channels → PixelShuffle (or DySample in RealPLKSR).【F:plksr/plksr_arch.py†L269-L406】【F:plksr/realplksr_arch.py†L65-L149】
+* **Speed/compute:** Convolution-only with large kernels; PLK re-parameterization (convert/fuse) can collapse multiple kernels for faster inference, while SparsePLK trades larger receptive field for extra conv branches.【F:plksr/plksr_arch.py†L134-L262】【F:plksr/plksr_arch.py†L349-L406】
+* **Size/memory:** Moderate; parameters scale with `n_blocks`, kernel size, and split ratio but no attention matrices. SparsePLK adds extra conv weights; RealPLKSR adds GroupNorm and optional DySample overhead.【F:plksr/plksr_arch.py†L134-L339】【F:plksr/realplksr_arch.py†L63-L151】
+* **Textures:** Large-kernel partial convs expand receptive field while CCM/ICCM/DCCM local mixers preserve textures; EA modulates fine detail with per-pixel gating.【F:plksr/plksr_arch.py†L17-L339】
+* **Advantages:** Efficient SR with large-kernel context and deploy-time fusion; flexible design (PLK/SparsePLK/RectSparsePLK, DySample).【F:plksr/plksr_arch.py†L134-L339】【F:plksr/realplksr_arch.py†L95-L151】
+* **Cons:** Large kernels increase latency on some hardware; performance depends on split ratio and kernel size tuning.【F:plksr/plksr_arch.py†L134-L339】
+* **Schematic:** Input → conv → [PLKBlock]×N → conv → residual add → PixelShuffle/DySample → output.【F:plksr/plksr_arch.py†L349-L406】【F:plksr/realplksr_arch.py†L123-L149】
+
+### 62) RHA
+* **Key features:** HybridAttention splits channels into OmniShift conv and FocusedLinearAttention paths with optional downsample/shift; GatedCNNBlock mixes hybrid attention into gated conv; GatedGroup stacks blocks; UniUpsample supports multiple upsampling modes including DySample.【F:rha/arch.py†L201-L470】【F:rha/arch.py†L483-L589】
+* **Operating principle:** (Optional) PixelUnshuffle → conv → stacked GatedGroups (each with hybrid attention blocks) → residual add → UniUpsample; input is padded to multiples of window/downsample and cropped after output.【F:rha/arch.py†L483-L589】
+* **Speed/compute:** Hybrid attention is heavier than pure CNNs but cheaper than full global attention via downsampled windows; DySample adds adaptive sampling overhead when enabled.【F:rha/arch.py†L201-L470】【F:rha/arch.py†L483-L589】
+* **Size/memory:** Moderate; attention buffers and window padding raise memory vs conv-only SR; group depth scales memory linearly.【F:rha/arch.py†L201-L470】【F:rha/arch.py†L483-L589】
+* **Textures:** OmniShift conv captures local textures while focused attention adds structured long-range cues, improving texture coherence across patterns.【F:rha/arch.py†L398-L470】
+* **Advantages:** Hybrid design balances local detail and non-local context; flexible upsamplers and unshuffle option for low-scale efficiency.【F:rha/arch.py†L105-L198】【F:rha/arch.py†L483-L589】
+* **Cons:** Padding/cropping can affect boundaries; attention path adds complexity and tuning (down_list/window size).【F:rha/arch.py†L483-L589】
+* **Schematic:** Input → (PixelUnshuffle) → conv → [GatedGroup (HybridAttention)]×N → residual → UniUpsample → output.【F:rha/arch.py†L483-L589】
+
+### 63) SpanC
+* **Key features:** SPAB blocks built from RepConv/Conv3XC re-parameterizable convolutions; IGConv upsampler uses implicit Fourier-based kernel generation to support multiple scales; MetaIGConv stores allowed scales for evaluation.【F:spanpp/spanpp_arch.py†L12-L242】【F:spanpp/spanpp_arch.py†L270-L427】
+* **Operating principle:** RepConv stem → SPAB block stack → feature concat + conv → IGConv generates scale-specific kernels → PixelShuffle to output (random scale during training).【F:spanpp/spanpp_arch.py†L270-L427】
+* **Speed/compute:** Convolutional backbone with re-parameterizable blocks; IGConv kernel generation adds overhead per scale, but evaluation caches scale-specific convs for faster inference.【F:spanpp/spanpp_arch.py†L38-L230】【F:spanpp/spanpp_arch.py†L270-L356】
+* **Size/memory:** Moderate; implicit kernel parameters and multiple scale buffers increase parameter count vs plain CNN SR, but no attention matrices.【F:spanpp/spanpp_arch.py†L270-L356】
+* **Textures:** RepConv-based SPAB enhances local texture detail; implicit kernel upsampler can preserve fine textures across varying scales.【F:spanpp/spanpp_arch.py†L182-L233】【F:spanpp/spanpp_arch.py†L270-L427】
+* **Advantages:** Multi-scale SR from one model with implicit upsampling; deployment-friendly via re-parameterized convs and cached evaluation kernels.【F:spanpp/spanpp_arch.py†L38-L230】【F:spanpp/spanpp_arch.py†L270-L356】
+* **Cons:** Implicit kernel generation adds compute; scale-specific behavior depends on scale list and training coverage.【F:spanpp/spanpp_arch.py†L270-L427】
+* **Schematic:** Input → RepConv → [SPAB]×N → feature concat → IGConv (implicit kernels) → PixelShuffle → output.【F:spanpp/spanpp_arch.py†L270-L427】
+
+### 64) MicroSR
+* **Key features:** Swin-style window attention with RDG blocks, channel attention (CAB), overlap ratio handling, patch embed/unembed, and pixelshuffle reconstruction head; supports stochastic depth and checkpointing for memory control.【F:team07_MicroSR/MicroSR_Model.py†L50-L520】【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Operating principle:** conv_first → patch embed → stacked RDG layers (window attention + conv fusion) → conv_after_body residual → conv_before_upsample → PixelShuffle output.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Speed/compute:** Window attention is heavier than CNNs but cheaper than global attention; overlap ratio increases compute with improved context, and checkpointing can trade compute for memory.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Size/memory:** Transformer-style with attention buffers and patch tokens; memory scales with window size and depth, with optional checkpointing to reduce peak usage.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Textures:** Window attention plus CAB supports detailed texture recovery and local contrast enhancement in SR outputs.【F:team07_MicroSR/MicroSR_Model.py†L55-L120】【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Advantages:** Strong local-detail SR with Swin-derived attention; configurable depth/heads and overlap ratio for quality/compute tuning.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Cons:** Higher latency/memory than conv-only SR; assumes fixed window sizing and patch embed resolution choices.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+* **Schematic:** Input → conv_first → patch embed → [RDG (window attention)]×N → conv_after_body → PixelShuffle head → output.【F:team07_MicroSR/MicroSR_Model.py†L624-L839】
+
+### 65) DAT family
+* **Key features:** DAT uses Dual Aggregation Transformer blocks (DATB) alternating adaptive spatial attention and adaptive channel attention with an AIM interaction module; MSHAT extends hybrid attention with RHAG groups, overlapping window attention, and relative position indices for SA/OCA.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Operating principle:** conv_first → residual groups of DATB (spatial + channel attention) → conv_after_body residual → pixelshuffle reconstruction; MSHAT mirrors HAT-style RHAG stacks with overlap-aware attention before upsampling.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Speed/compute:** Attention-heavy; DAT alternates spatial/channel attention per block to limit full global cost, while MSHAT uses windowed attention with overlap to capture more pixels at higher compute cost than CNN SR.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Size/memory:** Larger than CNN baselines due to attention projections and token buffers; memory scales with depth and window sizes, with optional checkpointing in DAT for savings.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Textures:** Dual aggregation and overlap-aware attention improve texture fidelity and structural coherence across windows compared to plain window attention.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Advantages:** Strong SR quality via spatial+channel attention fusion (DAT) and overlap-enhanced hybrid attention (MSHAT).【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Cons:** Higher compute and memory; attention-heavy stacks need careful window/overlap tuning for efficiency.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+* **Schematic:** Input → conv_first → [DATB/RHAG]×N → conv_after_body → PixelShuffle → output.【F:team15_BBox/model.py†L530-L760】【F:team15_BBox/MSHAT_model.py†L790-L940】
+
+### 66) HAT family
+* **Key features:** HAT/HATM use RHAG stacks with window + overlap attention and relative position indices; HATIQCMix adds IQA-driven multi-branch specialization using brightness/contrast/sharpness/noise/saturation metrics, branching after shared layers.【F:team18_XiaomiMM/model_2.py†L710-L880】【F:team18_XiaomiMM/model_3.py†L1461-L1620】【F:team18_XiaomiMM/model_1.py†L700-L880】
+* **Operating principle:** conv_first → patch embed → RHAG stacks → conv_after_body residual → PixelShuffle reconstruction; HATIQCMix shares early RHAG layers then splits into multiple IQA-conditioned branches before final SR output.【F:team18_XiaomiMM/model_2.py†L710-L880】【F:team18_XiaomiMM/model_1.py†L840-L960】
+* **Speed/compute:** Window attention is heavier than CNNs; HATIQCMix multiplies compute by branch count when executing multiple branches, trading speed for IQA specialization.【F:team18_XiaomiMM/model_1.py†L812-L900】【F:team18_XiaomiMM/model_2.py†L710-L880】
+* **Size/memory:** High due to attention stacks and multiple branches (HATIQCMix); memory scales with depth and window size, plus branch duplication for IQA mix.【F:team18_XiaomiMM/model_1.py†L812-L900】【F:team18_XiaomiMM/model_2.py†L710-L880】
+* **Textures:** Overlap-aware hybrid attention improves texture reconstruction, and IQA-conditioned branches target specific degradation traits (noise, sharpness, etc.).【F:team18_XiaomiMM/model_1.py†L700-L880】【F:team18_XiaomiMM/model_2.py†L710-L880】
+* **Advantages:** Strong SR fidelity with hybrid attention; HATIQCMix can adapt to different perceptual quality factors via branch specialization.【F:team18_XiaomiMM/model_1.py†L700-L880】【F:team18_XiaomiMM/model_2.py†L710-L880】
+* **Cons:** High compute/memory; IQA branching increases complexity and requires quality-metric inference to route effectively.【F:team18_XiaomiMM/model_1.py†L700-L880】【F:team18_XiaomiMM/model_2.py†L710-L880】
+* **Schematic:** Input → conv_first → patch embed → [RHAG]×N (shared or branched) → conv_after_body → PixelShuffle → output.【F:team18_XiaomiMM/model_1.py†L840-L960】【F:team18_XiaomiMM/model_2.py†L710-L880】
